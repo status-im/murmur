@@ -1,5 +1,5 @@
 {
-  "name": "whisper-js",
+  "name": "murmur-js",
   "version": "0.0.1",
   "main": "index.js",
   "dependencies": {
