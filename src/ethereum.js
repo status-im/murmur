@@ -50,8 +50,14 @@ class Ethereum {
     })
 
     staticNodes.map(node => {
-      const id = Buffer.from(node.id, 'hex');
-      this.rlpx.connect({id, address: node.address, port: node.port});
+      const p = node.split("@");
+      const q = p[1].split(":");
+
+      const id = Buffer.from(p[0].replace("enode://", ""), "hex");
+      const address = q[0];
+      const port = q[1];
+
+      this.rlpx.connect({id, address, port});
     });
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)))
