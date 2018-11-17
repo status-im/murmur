@@ -6,7 +6,6 @@ const assert = require('assert')
 const rlp = require('rlp-encoding')
 const Buffer = require('safe-buffer').Buffer
 const SHH = require('./shh.js')
-const staticNodes = require('./data/static-nodes.json');
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
@@ -16,6 +15,7 @@ class Ethereum {
     this.chainId = options.chainId;
     this.privateKey = options.privateKey;
     this.bootnodes = options.bootnodes || [];
+    this.staticnodes = options.staticnodes || [];
   }
 
   start(ip, port) {
@@ -44,20 +44,16 @@ class Ethereum {
       dpt: this.dpt,
       maxPeers: 25,
       capabilities: [
+      //  devp2p.ETH.eth63,
+      //  devp2p.ETH.eth62,
+      //  devp2p.LES.les2,
         { name: 'shh', version: 6, length: 17, constructor: SHH }
       ],
       listenPort: null
     })
 
-    staticNodes.map(node => {
-      const p = node.split("@");
-      const q = p[1].split(":");
-
-      const id = Buffer.from(p[0].replace("enode://", ""), "hex");
-      const address = q[0];
-      const port = q[1];
-
-      this.rlpx.connect({id, address, port});
+    this.staticnodes.map(node => {
+      this.rlpx.connect({id: node.id, address: node.address, port: node.port});
     });
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)))
@@ -71,6 +67,12 @@ class Ethereum {
     })
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
+      const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
+      if(staticNode){
+        // Reconnect
+        this.rlpx.connect({id: staticNode.id, address: staticNode.address, port: staticNode.port});
+      }
+
       const who = disconnectWe ? 'we disconnect' : 'peer disconnect'
       const total = this.rlpx.getPeers().length
       console.log(chalk.yellow(`Remove peer: ${getPeerAddr(peer)} - ${who}, reason: ${peer.getDisconnectPrefix(reasonCode)} (${String(reasonCode)}) (total: ${total})`))
