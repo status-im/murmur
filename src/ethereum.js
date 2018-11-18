@@ -15,6 +15,7 @@ class Ethereum {
     this.chainId = options.chainId;
     this.privateKey = options.privateKey;
     this.bootnodes = options.bootnodes || [];
+    this.staticnodes = options.staticnodes || [];
   }
 
   start(ip, port) {
@@ -43,35 +44,35 @@ class Ethereum {
       dpt: this.dpt,
       maxPeers: 25,
       capabilities: [
-        devp2p.ETH.eth63,
-        devp2p.ETH.eth62,
-        devp2p.LES.les2,
+      //  devp2p.ETH.eth63,
+      //  devp2p.ETH.eth62,
+      //  devp2p.LES.les2,
         { name: 'shh', version: 6, length: 17, constructor: SHH }
       ],
-      remoteClientIdFilter: ['go1.5', 'go1.6', 'go1.7'],
       listenPort: null
     })
+
+    this.staticnodes.map(node => {
+      this.rlpx.connect({id: node.id, address: node.address, port: node.port});
+    });
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)))
 
     this.rlpx.on('peer:added', (peer) => {
-      const eth = peer.getProtocols()[0]
+      const shh = peer.getProtocols()[0]
 
       const clientId = peer.getHelloMessage().clientId
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (eth${eth.getVersion()}) (total: ${this.rlpx.getPeers().length})`))
+      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
 
-      eth.sendStatus({
-        networkId: this.chainId,
-        td: devp2p._util.int2buffer(1048576), // total difficulty in genesis block
-        bestHash: Buffer.from('41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d', 'hex'),
-        genesisHash: Buffer.from('41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d', 'hex')
-      })
-
-      eth.on('message', async (code, payload) => {
-      })
     })
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
+      const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
+      if(staticNode){
+        // Reconnect
+        this.rlpx.connect({id: staticNode.id, address: staticNode.address, port: staticNode.port});
+      }
+
       const who = disconnectWe ? 'we disconnect' : 'peer disconnect'
       const total = this.rlpx.getPeers().length
       console.log(chalk.yellow(`Remove peer: ${getPeerAddr(peer)} - ${who}, reason: ${peer.getDisconnectPrefix(reasonCode)} (${String(reasonCode)}) (total: ${total})`))
