@@ -22,8 +22,7 @@ const hexToBytes = (hex) => {
   for (let c = 0; c < hex.length; c += 2)
     bytes.push(parseInt(hex.substr(c, 2), 16));
   return bytes;
-  };
-
+};
 
 const assignDefined = (target, ...sources) => {
   for (const source of sources) {
@@ -48,12 +47,11 @@ const decryptSymmetric = (topic, key, data, cb) => {
       throw err;
     }
 
-
-	if (data.length < constants.aesNonceLength) {
-        const errorMsg = "missing salt or invalid payload in symmetric message";
-        if(cb) return cb(errorMsg);
-		throw errorMsg;
-	}
+    if (data.length < constants.aesNonceLength) {
+      const errorMsg = "missing salt or invalid payload in symmetric message";
+      if(cb) return cb(errorMsg);
+      throw errorMsg;
+    }
 
     const salt = data.slice(data.length - constants.aesNonceLength);
     const msg = data.slice(0, data.length - 28);
@@ -66,8 +64,8 @@ const decryptSymmetric = (topic, key, data, cb) => {
     let pubKey;
 
     const auxiliaryFieldSize = decrypted.plaintext.readUIntLE(0, 1) & constants.flagMask;
-    
-    let auxiliaryField; 
+
+    let auxiliaryField;
     if(auxiliaryFieldSize !== 0) {
       auxiliaryField = decrypted.plaintext.readUIntLE(start, auxiliaryFieldSize);
       start += auxiliaryFieldSize;
@@ -75,14 +73,18 @@ const decryptSymmetric = (topic, key, data, cb) => {
     }
 
     const isSigned = (decrypted.plaintext.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
-    if(isSigned){   
-      const signature = getSignature(decrypted.plaintext);
+    let signature = null;
+    if(isSigned){
+      signature = getSignature(decrypted.plaintext);
       const hash = getHash(decrypted.plaintext);
       pubKey = ecRecoverPubKey(hash, signature);
     }
 
+    // TODO:
+    let padding = null
+
     if(cb){
-      return cb(null, assignDefined({}, {payload, pubKey}));
+      return cb(null, assignDefined({}, {payload, pubKey, signature, padding}));
     }
   });
 }
@@ -97,7 +99,7 @@ const ecRecoverPubKey = (messageHash, signature) => {
     r: slice(0, 32, signature).slice(2),
     s: slice(32, 64, signature).slice(2),
     v: toNumber(slice(64, length(signature), signature))
-  } 
+  }
 
   const ecPublicKey = secp256k1.recoverPubKey(new Buffer(messageHash.slice(2), "hex"), rsv, rsv.v < 2 ? rsv.v : 1 - rsv.v % 2);
 
@@ -106,5 +108,5 @@ const ecRecoverPubKey = (messageHash, signature) => {
 
 
 module.exports = {
-    decryptSymmetric
+  decryptSymmetric
 };

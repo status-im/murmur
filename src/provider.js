@@ -16,6 +16,7 @@ class Provider {
     this.powTarget = 12.5;
     this.maxMessageSize = 2000;
     this.events = new Events();
+    this.notificationCallbacks = [];
   }
 
   send(payload, callback) {
@@ -286,6 +287,18 @@ class Provider {
   shh_post(payload, cb) {
     this.events.emit('post', payload.params[0]);
     cb(null, true);
+  }
+
+  on(type, cb) {
+    // TODO: support other types later, if relevant
+    if (type !== 'data') return;
+    this.notificationCallbacks.push(cb)
+  }
+
+  transmit(result) {
+    this.notificationCallbacks.forEach((callback) => {
+      callback(result);
+    });
   }
 
 }

@@ -26,6 +26,19 @@ app.ws('/', function(ws, req) {
       ws.send(JSON.stringify(jsonResponse));
     })
   });
+  provider.on('data', (result) => {
+    // TODO: actually should only do this for subscribers.....
+    console.dir("======================")
+    console.dir("======================")
+    console.dir("======================")
+    console.dir("sending....")
+    console.log(JSON.stringify(result));
+    console.dir(result);
+    ws.send(JSON.stringify(result));
+    console.dir("======================")
+    console.dir("======================")
+    console.dir("======================")
+  })
 });
 
 app.listen(8546, () => console.log('Murmur listening on port 8546!'));

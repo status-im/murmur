@@ -7,6 +7,7 @@ const rlp = require('rlp-encoding')
 const Buffer = require('safe-buffer').Buffer
 const SHH = require('./shh.js')
 const Events = require('events');
+const {keccak256} = require("eth-lib/lib/hash");
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
@@ -18,6 +19,7 @@ class Ethereum {
     this.bootnodes = options.bootnodes || [];
     this.staticnodes = options.staticnodes || [];
     this.events = new Events();
+    this.messagesTracker = {}
   }
 
   start(ip, port) {
@@ -64,6 +66,15 @@ class Ethereum {
       const shh = peer.getProtocols()[0]
 
       shh.events.on('message', (message) => {
+        let [expiry, ttl, topic, data, nonce] = message;
+        let id = keccak256(message.join(''));
+
+        if (this.messagesTracker[id]) {
+          console.dir("same message" + id)
+          return;
+        }
+
+        this.messagesTracker[id] = ttl;
         this.events.emit('shh_message', message);
       });
 

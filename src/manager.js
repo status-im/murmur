@@ -1,5 +1,7 @@
 const { randomBytes } = require('crypto')
 const secp256k1 = require('secp256k1')
+const messages = require('./messages.js')
+const {keccak256} = require("eth-lib/lib/hash");
 
 class Manager {
 
@@ -9,6 +11,8 @@ class Manager {
     this.keys = {};
     this.listenToProviderEvents();
     this.listenToNodeEvents();
+
+    this.subscriptionId = 0;
   }
 
   listenToProviderEvents() {
@@ -30,9 +34,11 @@ class Manager {
       // this.node.events.emit("ssh_send_message", message)
     });
 
+    // TODO: this needs to refactored to take into account different clients
     this.provider.events.on('subscribe', (payload, cb) => {
       const { minPow, privateKeyID, topics, allowP2P } = payload;
       const id = randomBytes(32).toString('hex');
+      this.subscriptionId = id;
 
       cb(null, id);
     });
@@ -67,7 +73,47 @@ class Manager {
 
   listenToNodeEvents() {
     this.node.events.on('shh_message', (message) => {
-      console.dir('received message, sending to subscribers...')
+      console.dir('received message, sending to subscribers...');
+
+      let [expiry, ttl, topic, data, nonce] = message;
+
+      if (!topic.equals(Buffer.from("27ee704f", "hex"))) {
+        console.dir("unkwnon topic (TODO); ignoring message");
+        return;
+      }
+
+      let key = Buffer.from("e0c69378eaa4845cd27036f7b77447c2ab0ede5389a178839bc2b44d8441d07c", "hex");
+      let id = keccak256(message.join(''));
+
+      messages.decryptSymmetric(topic, key, data, (err, decrypted) => {
+        console.dir("--------------");
+        console.dir(id);
+        console.dir(decrypted.payload.toString());
+        console.dir(decrypted.pubkey.toString('hex'));
+        console.dir("--------------");
+
+        this.provider.transmit({
+          "jsonrpc": "2.0",
+          "method": "shh_subscription",
+          "params": {
+            subscription: this.subscriptionId,
+            result: {
+              sig: decrypted.signature.toString('hex'),
+              // recipientPublicKey: null,
+              // ttl: ttl,
+              ttl: 10, // TODO: correct value
+              timestamp: 1498577270, // TODO: correct value
+              topic: "0x" + topic.toString('hex'),
+              payload: "0x" + decrypted.payload.toString('hex'),
+              //padding: decrypted.padding.toString('hex'),
+              padding: null,
+              pow: 0.671, // TODO: correct value
+              hash: id
+            }
+          }
+        })
+        //this.provider.
+      });
       // console.dir(message)
       // TODO: send to clients sbuscribed to this message topic
     })
