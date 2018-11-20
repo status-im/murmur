@@ -53,6 +53,13 @@ const decryptSymmetric = (topic, key, data, cb) => {
       throw err;
     }
 
+
+	if (data.length < aesNonceLength) {
+        const errorMsg = "missing salt or invalid payload in symmetric message";
+        if(cb) return cb(errorMsg);
+		throw errorMsg;
+	}
+
     const salt = data.slice(data.length - aesNonceLength);
     const msg = data.slice(0, data.length - 28);
     const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), dummyAuthTag);
