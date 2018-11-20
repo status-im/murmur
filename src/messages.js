@@ -5,13 +5,8 @@ const elliptic = require("elliptic");
 const secp256k1 = new elliptic.ec("secp256k1");
 const {keccak256} = require("eth-lib/lib/hash");
 const {slice, length, toNumber} = require("eth-lib/lib/bytes");
+const constants = require('./constants');
 
-// Extract to constants file?
-const aesNonceLength = 12;
-const dummyAuthTag = Buffer.from("11223344556677889900112233445566", 'hex');
-const flagMask = 3; // 0011
-const isSignedMask = 4; // 0100
-const signatureLength = 65; // bytes
 
 /**
  * Convert a hex string to a byte array
@@ -47,22 +42,22 @@ const decryptAssymetric = (key, data, cb) => {
 }
 
 const decryptSymmetric = (topic, key, data, cb) => {
-  crypto.pbkdf2(topic, Buffer.from([]), 65536, aesNonceLength, 'sha256', (err, iv) => {
+  crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
     if (err) {
       if(cb) return cb(err);
       throw err;
     }
 
 
-	if (data.length < aesNonceLength) {
+	if (data.length < constants.aesNonceLength) {
         const errorMsg = "missing salt or invalid payload in symmetric message";
         if(cb) return cb(errorMsg);
 		throw errorMsg;
 	}
 
-    const salt = data.slice(data.length - aesNonceLength);
+    const salt = data.slice(data.length - constants.aesNonceLength);
     const msg = data.slice(0, data.length - 28);
-    const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), dummyAuthTag);
+    const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), constants.dummyAuthTag);
 
     let start = 1;
     const end = decrypted.plaintext.byteLength;
@@ -70,7 +65,7 @@ const decryptSymmetric = (topic, key, data, cb) => {
     let payload;
     let pubKey;
 
-    const auxiliaryFieldSize = decrypted.plaintext.readUIntLE(0, 1) & flagMask;
+    const auxiliaryFieldSize = decrypted.plaintext.readUIntLE(0, 1) & constants.flagMask;
     
     let auxiliaryField; 
     if(auxiliaryFieldSize !== 0) {
@@ -79,7 +74,7 @@ const decryptSymmetric = (topic, key, data, cb) => {
       payload = decrypted.plaintext.slice(start, start + auxiliaryField);
     }
 
-    const isSigned = (decrypted.plaintext.readUIntLE(0, 1) & isSignedMask) == isSignedMask;
+    const isSigned = (decrypted.plaintext.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
     if(isSigned){   
       const signature = getSignature(decrypted.plaintext);
       const hash = getHash(decrypted.plaintext);
@@ -92,9 +87,9 @@ const decryptSymmetric = (topic, key, data, cb) => {
   });
 }
 
-const getSignature = (plaintextBuffer) => "0x" + plaintextBuffer.slice(plaintextBuffer.length - signatureLength, plaintextBuffer.length).toString('hex');
+const getSignature = (plaintextBuffer) => "0x" + plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length).toString('hex');
 
-const getHash = (plaintextBuffer) => keccak256(hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - signatureLength).toString('hex')));
+const getHash = (plaintextBuffer) => keccak256(hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - constants.signatureLength).toString('hex')));
 
 const ecRecoverPubKey = (messageHash, signature) => {
 // From eth-lib
