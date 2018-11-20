@@ -6,7 +6,7 @@ const expressWs = require('express-ws')(app);
 const Provider = require('./provider');
 const provider = new Provider();
 
-const node = require('./index.js');
+const node = require('./client.js');
 
 const Manager = require('./manager')
 const manager = new Manager(node, provider)

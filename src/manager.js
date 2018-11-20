@@ -67,7 +67,7 @@ class Manager {
 
   listenToNodeEvents() {
     this.node.events.on('shh_message', (message) => {
-      console.dir('received message')
+      console.dir('received message, sending to subscribers...')
       // console.dir(message)
       // TODO: send to clients sbuscribed to this message topic
     })
