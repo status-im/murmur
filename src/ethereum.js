@@ -6,6 +6,7 @@ const assert = require('assert')
 const rlp = require('rlp-encoding')
 const Buffer = require('safe-buffer').Buffer
 const SHH = require('./shh.js')
+const Events = require('events');
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
@@ -16,6 +17,7 @@ class Ethereum {
     this.privateKey = options.privateKey;
     this.bootnodes = options.bootnodes || [];
     this.staticnodes = options.staticnodes || [];
+    this.events = new Events();
   }
 
   start(ip, port) {
@@ -60,6 +62,10 @@ class Ethereum {
 
     this.rlpx.on('peer:added', (peer) => {
       const shh = peer.getProtocols()[0]
+
+      shh.events.on('message', (message) => {
+        this.events.emit('shh_message', message);
+      });
 
       const clientId = peer.getHelloMessage().clientId
       console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
