@@ -29,11 +29,6 @@ class SHH {
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
 
-        if (!topic.equals(Buffer.from("27ee704f", "hex"))) {
-          console.dir("unkwnon topic (TODO); ignoring message");
-          return;
-        }
-
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
         console.dir("ttl: " + devp2p._util.buffer2int(ttl))
