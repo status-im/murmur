@@ -72,90 +72,47 @@ class Provider {
   }
 
   shh_newKeyPair(payload, cb) {
-    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
-      if (err) return cb(err);
-
-      const id = buf.toString('hex');
-      
-      if(privateKeys[id]){
-        return cb("Key is not unique");
-      }
-
-      const key = ec.genKeyPair();
-
-      privateKeys[id] = Buffer.from(key.getPrivate().toString('hex'), 'hex')
-
-      cb (null, id);
-    });
+    this.events.emit('newKeyPair', cb);
   }
 
   shh_addPrivateKey(payload, cb) {
-    const key = Buffer.from(stripHexPrefix(payload.params[0]), 'hex');
-    
-    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
-      if (err) return cb(err);
+    if (!payload.params[0]) {
+      return cb("private key is required");
+    }
 
-      const id = buf.toString('hex');
-      
-      if(privateKeys[id]){
-        return cb("Key is not unique");
-      }
-
-      privateKeys[id] = key;
-
-      cb(null, id);
-    });
+    this.events.emit('addPrivateKey', payload.params[0], cb);
   }
 
   shh_deleteKeyPair(payload, cb) {
-    const id = payload.params[0];
-    if(id.length / 2 != constants.keyIdLength){
-      const errMsg = "Invalid id";
-      return cb(errMsg);
+    if (!payload.params[0]) {
+      return cb("key id is required");
     }
 
-    if(privateKeys[id]){
-      delete privateKeys[id];
-      cb(null, true);
-    } else {
-      cb(null, false);
-    }
+    this.events.emit('deleteKeyPair', payload.params[0], cb);
   }
 
   shh_hasKeyPair(payload, cb) {
-    const id = payload.params[0];
-    cb(null, !!privateKeys[id]);
+    if (!payload.params[0]) {
+      return cb("key id is required");
+    }
+
+    this.events.emit('hasKeyPair', payload.params[0], cb);
   }
 
   shh_getPublicKey(payload, cb) {
-    const id = payload.params[0];
-    
-    if(id.length / 2 != constants.keyIdLength){
-      const errMsg = "Invalid id";
-      return cb(errMsg);
+    if (!payload.params[0]) {
+      return cb("key id is required");
     }
 
-    if(privateKeys[id]){
-      const pubKey = "0x" + ec.keyFromPrivate(privateKeys[id]).getPublic().encode('hex');
-      cb(null, pubKey);
-    } else {
-      cb("Key not found");
-    }
+    this.events.emit('getPublicKey', payload.params[0], cb);
   }
 
   shh_getPrivateKey(payload, cb) {
-    const id = payload.params[0];
-    
-    if(id.length / 2 != constants.keyIdLength){
-      const errMsg = "Invalid id";
-      return cb(errMsg);
+    if (!payload.params[0]) {
+      return cb("key id is required");
     }
 
-    if(privateKeys[id]){
-      cb(null, "0x" + symKeys[id].toString('hex'));
-    } else {
-      cb("Key not found");
-    }
+    this.events.emit('getPrivateKey', payload.params[0], cb);
   }
 
   shh_newSymKey(payload, cb) {

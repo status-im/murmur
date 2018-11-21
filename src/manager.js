@@ -2,13 +2,17 @@ const { randomBytes } = require('crypto')
 const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
+const stripHexPrefix = require('strip-hex-prefix');
+const constants = require('./constants');
 
 class Manager {
 
   constructor(node, provider) {
     this.node = node;
     this.provider = provider;
+    
     this.keys = {};
+    
     this.listenToProviderEvents();
     this.listenToNodeEvents();
 
@@ -45,12 +49,30 @@ class Manager {
 
     this.provider.events.on("newKeyPair", (cb) => {
       const id = randomBytes(32).toString('hex');
+
+      if(this.keys[id]) return cb("key is not unique");
+
       const privKey = randomBytes(32);
       const pubKey = secp256k1.publicKeyCreate(privKey);
 
       this.keys[id] = {
         privKey: privKey.toString('hex'),
         pubKey: pubKey.toString('hex')
+      };
+
+      cb(null, id);
+    });
+
+    this.provider.events.on("addPrivateKey", (privKey, cb) => {
+      const id = randomBytes(32).toString('hex');
+
+      if(this.keys[id]) return cb("key is not unique");
+
+      privKey = stripHexPrefix(privKey);
+
+      this.keys[id] = {
+        privKey,
+        pubKey: secp256k1.publicKeyCreate(Buffer.from(privKey, "hex")).toString('hex')
       };
 
       cb(null, id);
@@ -69,6 +91,41 @@ class Manager {
 
       cb(null, key.privKey);
     });
+
+    this.provider.events.on("hasKeyPair", (id, cb) => {
+      const key = this.keys[id];
+      cb(null, !!key);
+    });
+
+    this.provider.events.on("deleteKeyPair", (id, cb) => {
+      if(id.length / 2 != constants.keyIdLength){
+        const errMsg = "invalid id";
+        return cb(errMsg);
+      }
+  
+      if(this.keys[id]){
+        delete this.keys[id];
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    });
+
+    this.provider.events.on("addSymKey", (symmetricKey, cb) => {
+      const id = randomBytes(32).toString('hex');
+
+      if(this.keys[id]) return cb("key is not unique");
+
+      if(key.length != constants.symKeyLength){
+        cb("wrong key size");
+      }
+  
+      this.keys[id] = {
+        symmetricKey
+      };
+
+      cb(null, id);
+    })
   }
 
   listenToNodeEvents() {
