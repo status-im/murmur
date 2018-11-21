@@ -10,13 +10,12 @@ class Manager {
   constructor(node, provider) {
     this.node = node;
     this.provider = provider;
-    
+
     this.keys = {};
-    
+    this.subscriptions = {};
+
     this.listenToProviderEvents();
     this.listenToNodeEvents();
-
-    this.subscriptionId = 0;
   }
 
   listenToProviderEvents() {
@@ -40,9 +39,19 @@ class Manager {
 
     // TODO: this needs to refactored to take into account different clients
     this.provider.events.on('subscribe', (payload, cb) => {
-      const { minPow, privateKeyID, topics, allowP2P } = payload;
+      const { minPow, symKeyID, privateKeyID, topics, allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
-      this.subscriptionId = id;
+      for (let topic of topics) {
+        console.dir("==> topic")
+        console.dir(topic.toString('hex'))
+        if (!this.subscriptions[topic]) {
+          this.subscriptions[topic] = {}
+        }
+        this.subscriptions[topic][id] = {
+          privateKeyID,
+          symKeyID
+        }
+      }
 
       cb(null, id);
     });
@@ -102,7 +111,7 @@ class Manager {
         const errMsg = "invalid id";
         return cb(errMsg);
       }
-  
+
       if(this.keys[id]){
         delete this.keys[id];
         cb(null, true);
@@ -123,7 +132,7 @@ class Manager {
       if(stripHexPrefix(symmetricKey).length / 2 != constants.symKeyLength){
         return cb("wrong key size");
       }
-  
+
       this.keys[id] = {
         symmetricKey: "0x" + stripHexPrefix(symmetricKey)
       };
@@ -175,51 +184,59 @@ class Manager {
     });
   }
 
-  
-
   listenToNodeEvents() {
     this.node.events.on('shh_message', (message) => {
       console.dir('received message, sending to subscribers...');
 
       let [expiry, ttl, topic, data, nonce] = message;
 
-      if (!topic.equals(Buffer.from("27ee704f", "hex"))) {
-        console.dir("unkwnon topic (TODO); ignoring message");
+      let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
+      if (!topicSubscriptions) {
         return;
       }
 
-      let key = Buffer.from("e0c69378eaa4845cd27036f7b77447c2ab0ede5389a178839bc2b44d8441d07c", "hex");
       let id = keccak256(message.join(''));
 
-      messages.decryptSymmetric(topic, key, data, (err, decrypted) => {
-        console.dir("--------------");
-        console.dir(id);
-        console.dir(decrypted.payload.toString());
-        console.dir(decrypted.pubKey.toString('hex'));
-        console.dir("--------------");
+      for (let subscriptionId of Object.keys(topicSubscriptions)) {
+        console.dir(">>>>> subscription");
+        let keyId = topicSubscriptions[subscriptionId].symKeyID;
+        if (!keyId) {
+          // TODO: try asymmetric decryption instead...
+          return;
+        }
+        let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
 
-        this.provider.transmit({
-          "jsonrpc": "2.0",
-          "method": "shh_subscription",
-          "params": {
-            subscription: this.subscriptionId,
-            result: {
-              sig: "0x" + decrypted.pubKey.toString('hex'),
-              // recipientPublicKey: null,
-              // ttl: ttl,
-              ttl: 10, // TODO: correct value
-              timestamp: 1498577270, // TODO: correct value
-              topic: "0x" + topic.toString('hex'),
-              payload: "0x" + decrypted.payload.toString('hex'),
-              //padding: decrypted.padding.toString('hex'),
-              padding: null,
-              pow: 0.671, // TODO: correct value
-              hash: id
+        // TODO: room for improvement here, only needs to decrypt once, just need sto verify each key is valid/same for the same topic
+        messages.decryptSymmetric(topic, key, data, (err, decrypted) => {
+          console.dir("--------------");
+          console.dir(id);
+          console.dir(decrypted.payload.toString());
+          console.dir(decrypted.pubKey.toString('hex'));
+          console.dir("--------------");
+
+          this.provider.transmit({
+            "jsonrpc": "2.0",
+            "method": "shh_subscription",
+            "params": {
+              subscription: subscriptionId,
+              result: {
+                sig: "0x" + decrypted.pubKey.toString('hex'),
+                // recipientPublicKey: null,
+                // ttl: ttl,
+                ttl: 10, // TODO: correct value
+                timestamp: 1498577270, // TODO: correct value
+                topic: "0x" + topic.toString('hex'),
+                payload: "0x" + decrypted.payload.toString('hex'),
+                //padding: decrypted.padding.toString('hex'),
+                padding: null,
+                pow: 0.671, // TODO: correct value
+                hash: id
+              }
             }
-          }
-        })
-        //this.provider.
-      });
+          })
+          //this.provider.
+        });
+      }
       // console.dir(message)
       // TODO: send to clients sbuscribed to this message topic
     })
