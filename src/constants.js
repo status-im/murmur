@@ -5,5 +5,6 @@ module.exports = {
     isSignedMask: 4, // 0100
     signatureLength: 65, // bytes,
     symKeyLength: 32, // bytes,
-    keyIdLength: 32
+    keyIdLength: 32,
+    privKeyLength: 32
 }
