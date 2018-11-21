@@ -116,102 +116,47 @@ class Provider {
   }
 
   shh_newSymKey(payload, cb) {
-    crypto.randomBytes(constants.symKeyLength, (err, keyBuf) => {
-      if (err) return cb(err);
-
-      crypto.randomBytes(constants.keyIdLength, (err, idBuf) => {
-        if (err) return cb(err);
-
-        const id = idBuf.toString('hex');
-
-        if(symKeys[id]){
-          return cb("Key is not unique");
-        }
-  
-        symKeys[id] = keyBuf;
-
-        cb(null, id);
-      });
-    });
+    this.events.emit('newSymKey', cb);
   }
 
   shh_addSymKey(payload, cb) {
-    const key = Buffer.from(stripHexPrefix(payload.params[0]), 'hex');
-    
-    if(key.length != constants.symKeyLength){
-      cb("Wrong key size");
+    if (!payload.params[0]) {
+      return cb("symmetric key is required");
     }
 
-    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
-      if (err) return cb(err);
-
-      const id = buf.toString('hex');
-      
-      if(symKeys[id]){
-        return cb("Key is not unique");
-      }
-
-      symKeys[id] = key;
-
-      cb(null, id);
-    });
+    this.events.emit('addSymKey', payload.params[0], cb);
   }
 
   shh_generateSymKeyFromPassword(payload, cb) {
-    let password = payload.params[0];
+    if (!payload.params[0]) {
+      return cb("password is required");
+    }
 
-    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
-      if (err) return cb(err);
-
-      const id = buf.toString('hex');
-      
-      if(symKeys[id]){
-        return cb("Key is not unique");
-      }
-
-      crypto.pbkdf2(password, "", 65356, constants.symKeyLength, 'sha256', (err, derivedKey) => {
-        if (err) return cb(err);
-
-        symKeys[id] = derivedKey;
-
-        cb (null, id);
-      });
-    });
+    this.events.emit('generateSymKeyFromPassword', payload.params[0], cb);
   }
    
   shh_hasSymKey(payload, cb) {
-    const id = payload.params[0];
-    cb(null, !!symKeys[id]);
+    if (!payload.params[0]) {
+      return cb("key id is required");
+    }
+
+    this.events.emit('hasSymKey', payload.params[0], cb);
   }
 
   shh_getSymKey(payload, cb) {
-    const id = payload.params[0];
-    
-    if(id.length / 2 != constants.keyIdLength){
-      const errMsg = "Invalid id";
-      return cb(errMsg);
+    if (!payload.params[0]) {
+      return cb("key id is required");
     }
 
-    if(symKeys[id]){
-      cb(null, "0x" + symKeys[id].toString('hex'));
-    } else {
-      cb("Key not found");
-    }
+    this.events.emit('getSymKey', payload.params[0], cb);
   }
 
   shh_deleteSymKey(payload, cb) {
-    const id = payload.params[0];
-    if(id.length / 2 != constants.keyIdLength){
-      const errMsg = "Invalid id";
-      return cb(errMsg);
+    if (!payload.params[0]) {
+      return cb("key id is required");
     }
 
-    if(symKeys[id]){
-      delete symKeys[id];
-      cb(null, true);
-    } else {
-      cb(null, false);
-    }
+    this.events.emit('deleteSymKey', payload.params[0], cb);
   }
 
   shh_subscribe(payload, cb) {
