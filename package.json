@@ -16,7 +16,8 @@
     "node-aes-gcm": "^0.2.4",
     "rlp-encoding": "^3.0.0",
     "safe-buffer": "^5.1.2",
-    "secp256k1": "^3.5.2"
+    "secp256k1": "^3.5.2",
+    "strip-hex-prefix": "^1.0.0"
   },
   "devDependencies": {},
   "scripts": {

@@ -1,7 +1,13 @@
 const crypto = require('crypto')
 const Events = require('events')
+const constants = require('./constants');
+const stripHexPrefix = require('strip-hex-prefix');
+
+// TODO: verify visibility
+const symKeys = new Object();
 
 class Provider {
+
   constructor() {
     this.powTarget = 12.5;
     this.maxMessageSize = 2000;
@@ -90,37 +96,103 @@ class Provider {
   }
 
   shh_newSymKey(payload, cb) {
-    throw new Error("shh_newSymKey not implemented yet");
-    cb(null, false);
+    crypto.randomBytes(constants.symKeyLength, (err, keyBuf) => {
+      if (err) return cb(err);
+
+      crypto.randomBytes(constants.keyIdLength, (err, idBuf) => {
+        if (err) return cb(err);
+
+        const id = idBuf.toString('hex');
+
+        if(symKeys[id]){
+          return cb("Key is not unique");
+        }
+  
+        symKeys[id] = keyBuf;
+
+        cb(null, id);
+      });
+    });
   }
 
   shh_addSymKey(payload, cb) {
-    throw new Error("shh_addSymKey not implemented yet");
-    cb(null, false);
+    const key = Buffer.from(stripHexPrefix(payload.params[0]), 'hex');
+    
+    if(key.length != constants.symKeyLength){
+      cb("Wrong key size");
+    }
+
+    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
+      if (err) return cb(err);
+
+      const id = buf.toString('hex');
+      
+      if(symKeys[id]){
+        return cb("Key is not unique");
+      }
+
+      symKeys[id] = key;
+
+      cb(null, id);
+    });
   }
 
   shh_generateSymKeyFromPassword(payload, cb) {
     let password = payload.params[0];
 
-    crypto.pbkdf2(password, "", 65356, 32, 'sha256', (err, derivedKey) => {
-      if (err) { return cb(err) }
-      cb (null, derivedKey.toString('hex'));
+    crypto.randomBytes(constants.keyIdLength, (err, buf) => {
+      if (err) return cb(err);
+
+      const id = buf.toString('hex');
+      
+      if(symKeys[id]){
+        return cb("Key is not unique");
+      }
+
+      crypto.pbkdf2(password, "", 65356, constants.symKeyLength, 'sha256', (err, derivedKey) => {
+        if (err) return cb(err);
+
+        symKeys[id] = derivedKey;
+
+        cb (null, id);
+      });
     });
   }
-
+   
   shh_hasSymKey(payload, cb) {
-    throw new Error("shh_hasSymKey not implemented yet");
-    cb(null, false);
+    const id = payload.params[0];
+    cb(null, !!symKeys[id]);
   }
 
   shh_getSymKey(payload, cb) {
-    throw new Error("shh_getSymKey not implemented yet");
-    cb(null, false);
+    const id = payload.params[0];
+    
+    if(id.length / 2 != constants.keyIdLength){
+      const errMsg = "Invalid id";
+      return cb(errMsg);
+    }
+
+    if(symKeys[id]){
+      cb(null, "0x" + symKeys[id].toString('hex'));
+    } else {
+      cb("Key not found");
+    }
   }
 
+  // Ya
   shh_deleteSymKey(payload, cb) {
-    throw new Error("shh_deleteSymKey not implemented yet");
-    cb(null, false);
+    const id = payload.params[0];
+    if(id.length / 2 != constants.keyIdLength){
+      const errMsg = "Invalid id";
+      return cb(errMsg);
+    }
+
+    if(symKeys[id]){
+      delete symKeys[id];
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
   }
 
   shh_subscribe(payload, cb) {
