@@ -20,6 +20,7 @@ class Ethereum {
     this.staticnodes = options.staticnodes || [];
     this.events = new Events();
     this.messagesTracker = {}
+    this.peers = {}
   }
 
   start(ip, port) {
@@ -32,6 +33,16 @@ class Ethereum {
     }
 
     this.addBootnodes(this.bootnodes)
+  }
+
+  broadcast(msgType, msg) {
+    if (msgType !== "ssh_send_message") return;
+
+    for (let peerId of Object.keys(this.peers)) {
+      let peer = this.peers[peerId];
+
+      peer.shh.sendMessage(1, [Object.values(msg).join('')])
+    }
   }
 
   _startDPT() {
@@ -64,6 +75,11 @@ class Ethereum {
 
     this.rlpx.on('peer:added', (peer) => {
       const shh = peer.getProtocols()[0]
+
+      let peerId = peer._hello.id.toString('hex');
+
+      this.peers[peerId] = { peer, shh }
+      console.dir(Object.keys(this.peers));
 
       shh.events.on('message', (message) => {
         let [expiry, ttl, topic, data, nonce] = message;

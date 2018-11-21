@@ -35,6 +35,7 @@ class Manager {
 
       // TODO: sign and send message to node
       // this.node.events.emit("ssh_send_message", message)
+      this.node.broadcast("ssh_send_message", payload)
     });
 
     // TODO: this needs to refactored to take into account different clients
