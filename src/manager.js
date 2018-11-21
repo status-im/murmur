@@ -89,7 +89,7 @@ class Manager {
         console.dir("--------------");
         console.dir(id);
         console.dir(decrypted.payload.toString());
-        console.dir(decrypted.pubkey.toString('hex'));
+        console.dir(decrypted.pubKey.toString('hex'));
         console.dir("--------------");
 
         this.provider.transmit({
@@ -98,7 +98,7 @@ class Manager {
           "params": {
             subscription: this.subscriptionId,
             result: {
-              sig: decrypted.signature.toString('hex'),
+              sig: "0x" + decrypted.pubKey.toString('hex'),
               // recipientPublicKey: null,
               // ttl: ttl,
               ttl: 10, // TODO: correct value
