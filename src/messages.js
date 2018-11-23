@@ -109,5 +109,6 @@ const ecRecoverPubKey = (messageHash, signature) => {
 
 
 module.exports = {
-  decryptSymmetric
+  decryptSymmetric,
+  hexToBytes
 };

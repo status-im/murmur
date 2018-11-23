@@ -3,7 +3,23 @@ const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
 const stripHexPrefix = require('strip-hex-prefix');
+const devp2p = require('ethereumjs-devp2p');
 const constants = require('./constants');
+
+function transformBufferIntoNBytes(buf, intendedSize) {
+  let newBuffer = new Buffer(intendedSize);
+  if (intendedSize <= buf.length) {
+    return buf.slice(0, intendedSize)
+  }
+  let startIndex = intendedSize - buf.length;
+  for (let i = 0; i < intendedSize; i++) {
+    if (i < startIndex) {
+      continue;
+    }
+    newBuffer[i] = buf[i - startIndex];
+  }
+  return newBuffer;
+}
 
 class Manager {
 
@@ -32,6 +48,20 @@ class Manager {
         targetPeer
       } = payload;
       const messagePayload = payload.payload;
+
+      // symKeyID - id of key for encryption
+      // sig - id of key for signing
+
+      let envelope = []
+
+      let expiry_int = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+      envelope.push(transformBufferIntoNBytes(devp2p._util.int2buffer(expiry_int), 4))
+      envelope.push(transformBufferIntoNBytes(devp2p._util.int2buffer(ttl), 4))
+      envelope.push(transformBufferIntoNBytes(messages.hexToBytes(topic.slice(2)), 4))
+
+      console.dir("--- got topic");
+      console.dir(topic);
+      console.dir(transformBufferIntoNBytes(messages.hexToBytes(topic.slice(2)), 4))
 
       // TODO: sign and send message to node
       // this.node.events.emit("ssh_send_message", message)

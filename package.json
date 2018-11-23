@@ -17,6 +17,7 @@
     "rlp-encoding": "^3.0.0",
     "safe-buffer": "^5.1.2",
     "secp256k1": "^3.5.2",
+    "sha3": "^2.0.0",
     "strip-hex-prefix": "^1.0.0"
   },
   "devDependencies": {},
