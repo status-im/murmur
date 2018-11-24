@@ -75,7 +75,6 @@ const decryptSymmetric = (topic, key, data, cb) => {
     const isSigned = (decrypted.plaintext.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
     let signature = null;
     if (isSigned) {
-      console.dir(decrypted.plaintext.toString())
       signature = getSignature(decrypted.plaintext);
       const hash = getHash(decrypted.plaintext);
       pubKey = ecRecoverPubKey(hash, signature);
