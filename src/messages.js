@@ -5,6 +5,10 @@ const secp256k1 = new elliptic.ec("secp256k1");
 const {keccak256} = require("eth-lib/lib/hash");
 const {slice, length, toNumber} = require("eth-lib/lib/bytes");
 const constants = require('./constants');
+const {sign} = require("eth-lib/lib/account");
+const { randomBytes, pbkdf2 } = require('crypto')
+const stripHexPrefix = require('strip-hex-prefix');
+
 
 
 /**
@@ -33,6 +37,24 @@ const assignDefined = (target, ...sources) => {
     }
   }
   return target;
+}
+
+const addPayloadSizeField = (msg, payload) => {
+  let fieldSize = getSizeOfPayloadSizeField(payload);
+  let field = Buffer.alloc(4);
+  field.writeUInt32LE(payload.length, 0);
+  field = field.slice(0, fieldSize);
+  msg = Buffer.concat([msg, field]);
+  msg[0] |= fieldSize;
+  return msg;
+}
+
+const getSizeOfPayloadSizeField = (payload) => {
+	let s = 1;
+	for(i = payload.length; i>= 256; i /= 256) {
+		s++
+	}
+	return s;
 }
 
 const kdf = (hashName, z, s1, kdLen, cb) => {
@@ -116,6 +138,21 @@ const decryptAsymmetric = (key, data, cb) => {
   cb(null, msgObj);
 }
 
+const encryptSymmetric = (topic, envelope, options, cb) => {
+  crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
+    if (err) {
+      // TODO: throw error
+     // if(cb) return cb(err);
+     // throw err;
+    }
+    const salt = randomBytes(constants.aesNonceLength);
+    const encrypted = gcm.encrypt(Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex'), salt, envelope, Buffer.from([]))
+    envelope = Buffer.concat([encrypted.ciphertext, salt]);
+
+    cb(null, envelope);
+  });
+}
+
 const decryptSymmetric = (topic, key, data, cb) => {
   crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
     if (err) {
@@ -187,8 +224,60 @@ const ecRecoverPubKey = (messageHash, signature) => {
 }
 
 
+const buildMessage = (messagePayload, padding, sig, options) => {
+  console.log(options);
+  // encrypt and send message
+  // TODO: extract to constants
+  const flagsLength = 1; 
+  const payloadSizeFieldMaxSize = 4;
+  const signatureLength = 65; 
+  const padSizeLimit = 256;
+
+  let envelope = Buffer.from([0]); // No flags
+  envelope = addPayloadSizeField(envelope, messagePayload);
+  envelope = Buffer.concat([envelope, messagePayload]);
+      
+  if(!!padding){
+    envelope = Buffer.concat([envelope, padding]);
+  } else {
+    // Calculate padding:
+    let rawSize = flagsLength + getSizeOfPayloadSizeField(messagePayload) + messagePayload.length;
+
+    if(options.from){
+      rawSize += constants.signatureLength;
+    }
+
+    const odd = rawSize % padSizeLimit;
+    const paddingSize = padSizeLimit - odd;
+    const pad = randomBytes(paddingSize);
+
+    // TODO: validate data integrity of pad and padding size
+    envelope = Buffer.concat([envelope, pad]);
+  }
+
+  if(sig != null){
+    // Sign the message
+    if(envelope.readUIntLE(0, 1) & constants.isSignedMask){ // Is Signed
+      // TODO: throw error "failed to sign the message: already signed"
+      console.log("failed to sign the message: already signed");
+    }
+
+    envelope[0] |= constants.isSignedMask; 
+    const hash = keccak256("0x" + envelope.toString('hex'));
+    const s = sign(hash, options.from.privKey);
+    const signature = Buffer.from(stripHexPrefix(s), 'hex');
+
+    envelope = Buffer.concat([envelope, signature]);
+  }
+
+  return envelope;
+}
+
+
 module.exports = {
   decryptSymmetric,
   hexToBytes,
-  decryptAsymmetric
+  decryptAsymmetric,
+  buildMessage,
+  encryptSymmetric
 };

@@ -2,7 +2,6 @@ const { randomBytes, pbkdf2 } = require('crypto')
 const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
-const {sign} = require("eth-lib/lib/account");
 const gcm = require('node-aes-gcm');
 const crypto = require('crypto');
 
@@ -24,25 +23,6 @@ function transformBufferIntoNBytes(buf, intendedSize) {
   }
   return newBuffer;
 }
-
-const addPayloadSizeField = (msg, payload) => {
-  let fieldSize = getSizeOfPayloadSizeField(payload);
-  let field = Buffer.alloc(4);
-  field.writeUInt32LE(payload.length, 0);
-  field = field.slice(0, fieldSize);
-  msg = Buffer.concat([msg, field]);
-  msg[0] |= fieldSize;
-  return msg;
-}
-
-const getSizeOfPayloadSizeField = (payload) => {
-	let s = 1;
-	for(i = payload.length; i>= 256; i /= 256) {
-		s++
-	}
-	return s;
-}
-
 class Manager {
 
   constructor(node, provider) {
@@ -71,14 +51,18 @@ class Manager {
       } = payload;
       const messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
 
-
-
       // TODO move this to mesages
       console.log("POSTING MESSAGE")
       padding = padding | Buffer.from([]);
 
       const options = {
       };
+
+      if(ttl == 0){
+        ttl = 50; // Default TTL
+      }
+
+      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
 
       if(!!sig){
         options.from = this.keys[sig];
@@ -102,78 +86,19 @@ class Manager {
         // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
       }
       
-
-      // encrypt and send message
-      // TODO: extract to constants
-      const flagsLength = 1; 
-      const payloadSizeFieldMaxSize = 4;
-      const signatureLength = 65; 
-      const padSizeLimit = 256;
-
-      let envelope = Buffer.from([0]); // No flags
-      envelope = addPayloadSizeField(envelope, messagePayload);
-      envelope = Buffer.concat([envelope, messagePayload]);
-      
-      if(!!padding){
-        envelope = Buffer.concat([envelope, padding]);
-      } else {
-        // Calculate padding:
-        let rawSize = flagsLength + getSizeOfPayloadSizeField(payload) + messagePayload.length;
-
-        if(options.from){
-          rawSize += constants.signatureLength;
-        }
-
-        const odd = rawSize % padSizeLimit;
-        const paddingSize = padSizeLimit - odd;
-        const pad = randomBytes(paddingSize);
-
-        // TODO: validate data integrity of pad and padding size
-        envelope = Buffer.concat([envelope, pad]);
-      }
-      
-      if(ttl == 0){
-        ttl = 50; // Default TTL
-      }
-
-      if(sig != null){
-        // Sign the message
-        if(envelope.readUIntLE(0, 1) & constants.isSignedMask){ // Is Signed
-          // TODO: throw error "failed to sign the message: already signed"
-          console.log("failed to sign the message: already signed");
-        }
-
-        envelope[0] |= constants.isSignedMask; 
-        const hash = keccak256("0x" + envelope.toString('hex'));
-        const s = sign(hash, options.from.privKey);
-        const signature = Buffer.from(stripHexPrefix(s), 'hex');
-
-
-        envelope = Buffer.concat([envelope, signature]);
-      }
-
-      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+      let  envelope = messages.buildMessage(messagePayload, padding, sig, options);
 
       if(options.symKey){
-        // TODO: encrypt symmetric
-
-        // TODO move this to message
-       /* if !validateDataIntegrity(key, aesKeyLength) {
-          return errors.New("invalid key provided for symmetric encryption, size: " + strconv.Itoa(len(key)))
-        } */
-
-        crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
-          if (err) {
-            // TODO: throw error
-           // if(cb) return cb(err);
-           // throw err;
+        messages.encryptSymmetric(topic, envelope, options, (err, res) => {
+          if(err){
+            // TODO print error encrypting msg
+            return;
           }
-          const salt = randomBytes(constants.aesNonceLength);
-          const encrypted = gcm.encrypt(Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex'), salt, envelope, new Buffer([]))
-        
-          envelope = Buffer.concat([encrypted.ciphertext, salt]);
+
           // TODO: Pow the message
         });
+
+
       }
 
   
