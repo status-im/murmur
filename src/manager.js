@@ -3,6 +3,8 @@ const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
 const {sign} = require("eth-lib/lib/account");
+const gcm = require('node-aes-gcm');
+const crypto = require('crypto');
 
 const stripHexPrefix = require('strip-hex-prefix');
 const devp2p = require('ethereumjs-devp2p');
@@ -71,7 +73,7 @@ class Manager {
 
 
 
-
+      // TODO move this to mesages
       console.log("POSTING MESSAGE")
       padding = padding | Buffer.from([]);
 
@@ -150,18 +152,31 @@ class Manager {
         envelope = Buffer.concat([envelope, signature]);
       }
 
+      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+
       if(options.symKey){
         // TODO: encrypt symmetric
 
+        // TODO move this to message
+       /* if !validateDataIntegrity(key, aesKeyLength) {
+          return errors.New("invalid key provided for symmetric encryption, size: " + strconv.Itoa(len(key)))
+        } */
+
+        crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
+          if (err) {
+            // TODO: throw error
+           // if(cb) return cb(err);
+           // throw err;
+          }
+          const salt = randomBytes(constants.aesNonceLength);
+          const encrypted = gcm.encrypt(Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex'), salt, envelope, new Buffer([]))
         
+          envelope = Buffer.concat([encrypted.ciphertext, salt]);
+          // TODO: Pow the message
+        });
       }
 
-    
-      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
-
-
-      // PoW the message
-
+  
 
 
   // Send
