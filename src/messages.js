@@ -10,7 +10,6 @@ const { randomBytes, pbkdf2 } = require('crypto')
 const stripHexPrefix = require('strip-hex-prefix');
 
 
-
 /**
  * Convert a hex string to a byte array
  * Note: Implementation from crypto-js
@@ -27,6 +26,12 @@ const hexToBytes = (hex) => {
   return bytes;
 };
 
+
+/**
+ * Object.assign but only for defined values
+ * @param {object} target 
+ * @param  {...object} sources 
+ */
 const assignDefined = (target, ...sources) => {
   for (const source of sources) {
     for (const key of Object.keys(source)) {
@@ -39,6 +44,7 @@ const assignDefined = (target, ...sources) => {
   return target;
 }
 
+
 const addPayloadSizeField = (msg, payload) => {
   let fieldSize = getSizeOfPayloadSizeField(payload);
   let field = Buffer.alloc(4);
@@ -49,6 +55,7 @@ const addPayloadSizeField = (msg, payload) => {
   return msg;
 }
 
+
 const getSizeOfPayloadSizeField = (payload) => {
 	let s = 1;
 	for(i = payload.length; i>= 256; i /= 256) {
@@ -57,8 +64,9 @@ const getSizeOfPayloadSizeField = (payload) => {
 	return s;
 }
 
+
 const kdf = (hashName, z, s1, kdLen, cb) => {
-  const BlockSize = 64;
+  const BlockSize = 64; // TODO: extract to constant
   // --
   const reps =  ((kdLen + 7) * 8) / (BlockSize * 8)
   if(reps > Math.pow(2,32) - 1) {
@@ -72,7 +80,7 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
   for(let i = 0; i <= reps; i++){
     const hash = crypto.createHash(hashName);
     hash.update(Buffer.from(counter));
-    hash.update(z); // 
+    hash.update(z);  
     hash.update(s1);
     k = Buffer.concat([k, hash.digest()]);
     counter[3]++;
@@ -81,12 +89,13 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
   return k.slice(0, 32);
 }
 
-const symDecrypt = (ct, ke, mEnd) => {
+
+const aes128dec = (ct, key) => {
   const blSize = 16;
   const iv = ct.slice(0, blSize);
   const ciphertext = ct.slice(blSize);
 
-  var cipher = crypto.createDecipheriv("aes-128-ctr", ke, iv);
+  var cipher = crypto.createDecipheriv("aes-128-ctr", key, iv);
   var firstChunk = cipher.update(ciphertext);
   var secondChunk = cipher.final();
     
@@ -131,7 +140,7 @@ const decryptAsymmetric = (key, data, cb) => {
     return cb("Invalid Message");
   }
 
-  const decrypted = symDecrypt(ct, ke, mEnd);
+  const decrypted = aes128dec(ct, ke);
 
   const msgObj = parseMessage(decrypted);
 
@@ -139,14 +148,21 @@ const decryptAsymmetric = (key, data, cb) => {
 }
 
 const encryptSymmetric = (topic, envelope, options, cb) => {
+  const symKey = Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex');
+
+  if(!validateDataIntegrity(symKey, constants.symKeyLength)){
+    const errMsg = "invalid key provided for symmetric encryption, size: " + symKey.length;
+    if(cb) return cb(errMsg);
+    throw errMsg;
+	}
+
   crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
     if (err) {
-      // TODO: throw error
-     // if(cb) return cb(err);
-     // throw err;
+      if(cb) return cb(err);
+      throw err;
     }
     const salt = randomBytes(constants.aesNonceLength);
-    const encrypted = gcm.encrypt(Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex'), salt, envelope, Buffer.from([]))
+    const encrypted = gcm.encrypt(symKey, salt, envelope, Buffer.from([]))
     envelope = Buffer.concat([encrypted.ciphertext, salt]);
 
     cb(null, envelope);
@@ -223,10 +239,19 @@ const ecRecoverPubKey = (messageHash, signature) => {
   return ecPublicKey.encode('hex');
 }
 
+const validateDataIntegrity = (k, expectedSize) => {
+	if(k.length !== expectedSize) {
+		return false;
+  }
+  
+	if(expectedSize > 3 && k.equals(Buffer.alloc(k.length))){
+		return false;
+  }
+  
+	return true;
+}
 
-const buildMessage = (messagePayload, padding, sig, options) => {
-  console.log(options);
-  // encrypt and send message
+const buildMessage = (messagePayload, padding, sig, options, cb) => {
   // TODO: extract to constants
   const flagsLength = 1; 
   const payloadSizeFieldMaxSize = 4;
@@ -251,15 +276,17 @@ const buildMessage = (messagePayload, padding, sig, options) => {
     const paddingSize = padSizeLimit - odd;
     const pad = randomBytes(paddingSize);
 
-    // TODO: validate data integrity of pad and padding size
+    if(!validateDataIntegrity(pad, paddingSize)) {
+      return cb("failed to generate random padding of size " + paddingSize);
+    }
+
     envelope = Buffer.concat([envelope, pad]);
   }
 
   if(sig != null){
     // Sign the message
     if(envelope.readUIntLE(0, 1) & constants.isSignedMask){ // Is Signed
-      // TODO: throw error "failed to sign the message: already signed"
-      console.log("failed to sign the message: already signed");
+      cb("failed to sign the message: already signed");
     }
 
     envelope[0] |= constants.isSignedMask; 
@@ -276,8 +303,8 @@ const buildMessage = (messagePayload, padding, sig, options) => {
 
 module.exports = {
   decryptSymmetric,
-  hexToBytes,
   decryptAsymmetric,
+  encryptSymmetric,
+  hexToBytes,
   buildMessage,
-  encryptSymmetric
 };
