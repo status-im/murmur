@@ -28,24 +28,35 @@ class SHH {
   }
 
   _handleMessage (code, data) {
-    console.dir("----- whisper handleMessage")
-    console.dir(code)
+ //   console.dir("----- whisper handleMessage")
+   // console.dir(code)
 
     if (code === 0) {
       const payload = rlp.decode(data)
-      console.dir("whisper status")
-      console.dir("version: " + payload[0].toString('hex'))
-      console.dir("something: " + payload[1].toString('hex'))
+     // console.dir("whisper status")
+      //console.dir("version: " + payload[0].toString('hex'))
+     // console.dir("something: " + payload[1].toString('hex'))
       this.sendMessage(code, payload)
     }
     if (code === 1) {
       const payload = rlp.decode(data)
-      console.dir("whisper received message")
-      console.dir("contains " + payload.length + " envelopes")
+    //  console.dir("whisper received message")
+   //   console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
+        if(topic.toString('hex') == '27ee704f'){
 
+          const mm = require('./messages');
+          const key = Buffer.from('e0c69378eaa4845cd27036f7b77447c2ab0ede5389a178839bc2b44d8441d07c', 'hex');
+
+          mm.decryptSymmetric(topic, key, data, (c, s) => {
+            //console.log(s.payload.toString())
+          });
+        }
+        
+        
+/*
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
         console.dir("ttl: " + devp2p._util.buffer2int(ttl))
@@ -61,19 +72,22 @@ class SHH {
         console.dir("topic rebuild")
         console.dir(messages.hexToBytes(topicHex))
 
+        const mm
+
         console.dir("-----------------------")
         console.dir("----  POW ----")
-        console.dir(nonce);
+        console.dir(nonce);*/
         let powHash = (pow_hash(envelope, nonce))
-        console.dir(powHash)
-        console.dir(messages.hexToBytes(powHash)[0].toString(2))
+        //console.dir(powHash)
+        //console.dir(messages.hexToBytes(powHash)[0].toString(2))
         // TODO: temporary, this is NOT the right way to do it
         let leadingZeros = (8 - messages.hexToBytes(powHash)[0].toString(2).length)
-        console.dir(leadingZeros)
-        console.dir("-----------------------")
+       // console.dir(leadingZeros)
+      ///  console.dir("-----------------------")
 
+      
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
-        this.events.emit('message', envelope)
+      //  this.events.emit('message', envelope)
       })
     }
   }
@@ -85,6 +99,10 @@ class SHH {
 
   sendMessage (code, payload) {
     this.send(code, rlp.encode(payload))
+  }
+
+  sendRawMessage(code, payload) {
+    this.send(code, payload)
   }
 
 }

@@ -40,9 +40,16 @@ class Ethereum {
 
     for (let peerId of Object.keys(this.peers)) {
       let peer = this.peers[peerId];
+       peer.shh.sendMessage(1, msg)
+      }
+  }
 
-      peer.shh.sendMessage(1, [Object.values(msg).join('')])
-    }
+  rawBroadcast( msg) {
+    for (let peerId of Object.keys(this.peers)) {
+      let peer = this.peers[peerId];
+
+       peer.shh.sendRawMessage(1, msg)
+      }
   }
 
   _startDPT() {
@@ -86,7 +93,7 @@ class Ethereum {
         let id = keccak256(message.join(''));
 
         if (this.messagesTracker[id]) {
-          console.dir("same message" + id)
+        //  console.dir("same message: " + id)
           return;
         }
 

@@ -247,53 +247,47 @@ class Manager {
           }
 
           const powResult = ProofOfWork(powTarget, powTime, ttl, topic, envelope, options.expiry);
+          
 
           // should be around 0.005 
           // console.log(calculatePoW(options.expiry, ttl, topic, envelope, respow.nonce))
           
           // TODO: ensure pow > minPow
+          
 
+
+          let nonceBuffer = toBufferBE(powResult.nonce, 8)
+          let non0 = false;
+          let val = [];
+          for(let i = 0; i < nonceBuffer.length; i++){
+            if(nonceBuffer[i] != 0){
+              non0 = true;
+            }
+            if(non0){
+              val.push(nonceBuffer[i]);
+            }
+          }
+          nonceBuffer = Buffer.from(val);
+
+
+          const msgEnv = [];
+          msgEnv.push(options.expiry);
+          msgEnv.push(ttl);
+          msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
+          msgEnv.push(envelope);
+          msgEnv.push(nonceBuffer);
+          
+          const out = [msgEnv];
+          
+          const p = rlp.encode(out);
+
+          this.node.rawBroadcast(p)
+          
+
+     
 
         });
       }
-
-  
-
-
-  // Send
-  /*
-// ensure that the message PoW meets the node's minimum accepted PoW
-if req.PowTarget < api.w.MinPow() {
-  return ni*///l, ErrTooLowPoW
-//}//
-
-//err = api.w.Send(env)
-
-
-
-
-
-
-
-      // symKeyID - id of key for encryption
-      // sig - id of key for signing
-/*
-      let envelope = []
-
-      let expiry_int = Math.floor((new Date()).getTime() / 1000.0) + ttl;
-
-      
-      envelope.push(transformBufferIntoNBytes(devp2p._util.int2buffer(expiry_int), 4))
-      envelope.push(transformBufferIntoNBytes(devp2p._util.int2buffer(ttl), 4))
-      envelope.push(transformBufferIntoNBytes(messages.hexToBytes(topic.slice(2)), 4))
-
-      console.dir("--- got topic");
-      console.dir(topic);
-      console.dir(transformBufferIntoNBytes(messages.hexToBytes(topic.slice(2)), 4))
-
-      // TODO: sign and send message to node
-      // this.node.events.emit("ssh_send_message", message)
-      this.node.broadcast("ssh_send_message", payload)*/
     });
 
     // TODO: this needs to refactored to take into account different clients
