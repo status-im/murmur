@@ -2,6 +2,36 @@ const keccak256Buffer = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const {toBufferBE} = require('bigint-buffer');
+const Big = require('big.js');
+
+
+function hexStringToDecString(s) {
+  function add(x, y) {
+      var c = 0, r = [];
+      var x = x.split('').map(Number);
+      var y = y.split('').map(Number);
+      while(x.length || y.length) {
+          var s = (x.pop() || 0) + (y.pop() || 0) + c;
+          r.unshift(s < 10 ? s : s - 10); 
+          c = s < 10 ? 0 : 1;
+      }
+      if(c) r.unshift(c);
+      return r.join('');
+  }
+
+  var dec = '0';
+  s.split('').forEach(function(chr) {
+      var n = parseInt(chr, 16);
+      for(var t = 8; t; t >>= 1) {
+          dec = add(dec, dec);
+          if(n & t) dec = add(dec, '1');
+      }
+  });
+
+  return dec;
+}
+
+
 
 
 const BYTE1 = 1;       // 0001
@@ -65,10 +95,25 @@ function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
     target = powToFirstBit(powTarget, data, ttl);
   }
 
-  let buf = Buffer.allocUnsafe(32).fill(0);
+  let buf = Buffer.alloc(32);
   const h = Buffer.from(keccak256Buffer(rlp.encode([expiry, ttl, topic, data])), 'hex');
   
+
+  console.log("EXPIR")
+  console.log(expiry);
+  console.log(ttl)
+  console.log(topic);
+  console.log(data);
+
+  console.log("H")
+  console.log(h);
+
+
+
   buf = Buffer.concat([h, buf]);
+
+console.log("BUF")
+console.log(buf)
 
   let bestBit = -1;
   let firstBit;
@@ -82,6 +127,9 @@ function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
   for(let nonce = BigInt(0); getTime() < finish; ){
     for(let i = 0; i < 1024; i++){
       buf = Buffer.concat([buf.slice(0, buf.length - 8), toBufferBE(nonce, 8)]);
+      console.log("CalculatedBuf: " + (buf.toString('hex')))
+
+console.log("HASH: " + keccak256Buffer(buf))
 
       const d = Buffer.from(keccak256Buffer(buf));
       const size = 20 + data.length;
@@ -109,13 +157,36 @@ function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
   return {expiry, target, nonce: resNonce};
 }
 
+const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
+
+  let buf = Buffer.allocUnsafe(32).fill(0);
+  const h = Buffer.from(keccak256Buffer(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
+  
+  buf = Buffer.concat([h, buf]);
+  buf = Buffer.concat([buf.slice(0, buf.length - toBufferBE(Nonce, 8).length), toBufferBE(Nonce, 8)]);
+  
+  const d = Buffer.from(keccak256Buffer(buf));
+  const size = 20 + Data.length;
+  
+  const firstBit = firstBitSet(d);
+  
+  let x = (new Big(2)).pow(firstBit)
+  x = x.div(new Big(size))
+  x = x.div(new Big(TTL));
+
+  return x.toString()
+}
 
 
 const powTarget = 0.002;
 const powTime = 1;
 const ttl = 10;
 const topic = "0x27ee704f";
-const data = Buffer.from("48656c6c6f39b5ed9a3de73910c6e50a5c2683bda932d5d7d8e07ba239754fee69015074584773517385e16a6b58bc4d181f5593079d9195a4d23414bff013c7704b0b39e484b5d07c549dc2beefae53db01aaaf1c4f3481aae7d63bf63fdfd780af59a60180e462c33e827712f627b62d70061d99ef8617ee9ac6a2a019a48ca7f9f5bd035444ad647e2d54fdf536da21595dd8c04e22368992f9aabcc115be70467bc3ce2953809867e3f4ca15fae1738666e510bc0c59be63814f2c5332b8beda3eaafd1273f945ea0b2c8ef6c31c27e8e4e1905a5494c03a836f3239e8153f128f53785209944763d3d3fa38d944c4201a81fec261c1e907a98941812c3fa9e8bd0c3bf119342d939f8e9668711790479381fae91ca24fcf154a75b6de19c820476f7068657221", "hex");
-const expiry = 1543199247;
+const data = Buffer.from("48636c6c6f39b5ed9a3de73980c6e50a5c2683bda932d5d7d8e07ba239754fee69015074584773517385e16a6b58bc4d181f5593079d9195a4d23414bff013c7704b0b39e484b5d07c549dc2beefae53db01aaaf1c4f3481aae7d63bf63fdfd780af59a60180e462c33e827712f627b62d70061d99ef8617ee9ac6a2a019a48ca7f9f5bd035444ad647e2d54fdf536da21595dd8c04e22368992f9aabcc115be70467bc3ce2953809867e3f4ca15fae1738666e510bc0c59be63814f2c5332b8beda3eaafd1273f945ea0b2c8ef6c31c27e8e4e1905a5494c03a836f3239e8153f128f53785209944763d3d3fa38d944c4201a81fec261c1e907a98941812c3fa9e8bd0c3bf119342d939f8e9668711790479381fae91ca24fcf154a75b6de19c820476f7068657221", "hex");
+const expiry = 1543164402;
+               
+const res = ProofOfWork(powTarget, powTime, ttl, topic, data, expiry);
 
-console.log(ProofOfWork(powTarget, powTime, ttl, topic, data, expiry))
+console.log(res);
+
+console.log(calculatePoW(expiry, ttl, topic, data, res.nonce));
