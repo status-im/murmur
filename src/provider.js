@@ -1,14 +1,4 @@
-const crypto = require('crypto')
 const Events = require('events')
-const constants = require('./constants');
-const stripHexPrefix = require('strip-hex-prefix');
-const EC = require('elliptic').ec;
-
-// TODO: verify visibility
-const symKeys = new Object();
-const privateKeys = new Object();
-
-const ec = new EC('secp256k1');
 
 class Provider {
 

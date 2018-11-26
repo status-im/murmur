@@ -1,14 +1,14 @@
 const crypto = require('crypto');
 const gcm = require('node-aes-gcm');
 const elliptic = require("elliptic");
-const secp256k1 = new elliptic.ec("secp256k1");
 const {keccak256} = require("eth-lib/lib/hash");
 const {slice, length, toNumber} = require("eth-lib/lib/bytes");
 const constants = require('./constants');
-const {sign} = require("eth-lib/lib/account");
-const { randomBytes, pbkdf2 } = require('crypto')
+const { randomBytes } = require('crypto')
 const stripHexPrefix = require('strip-hex-prefix');
+const secp256k1 = new elliptic.ec("secp256k1");
 const secp256k1_ = require('secp256k1')
+// TODO: use only 'secp256k1_'.  the other has a bug signing messages
 
 
 /**
@@ -89,7 +89,6 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
   
   return k.slice(0, 32);
 }
-
 
 const aes128dec = (ct, key) => {
   const blSize = 16;
@@ -183,7 +182,7 @@ const decryptSymmetric = (topic, key, data, cb) => {
 
 const parseMessage = (message) => {
   let start = 1;
-  const end = message.byteLength;
+  const end = message.length;
 
   let payload;
   let pubKey;
@@ -200,8 +199,8 @@ const parseMessage = (message) => {
   const isSigned = (message.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
   let signature = null;
   if (isSigned) {
-    signature = getSignature(message);
-    const hash = getHash(message);
+    signature = getSignature(message, start + auxiliaryField);
+    const hash = getHash(message, isSigned);
     pubKey = ecRecoverPubKey(hash, signature);
   }
 
@@ -211,9 +210,18 @@ const parseMessage = (message) => {
   return assignDefined({}, {payload, pubKey, signature, padding});
 }
 
-const getSignature = (plaintextBuffer) => "0x" + plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length).toString('hex');
+const getSignature = (plaintextBuffer, mEnd) => {
+  return "0x" + plaintextBuffer.slice(mEnd, mEnd + constants.signatureLength).toString('hex');
+}
 
-const getHash = (plaintextBuffer) => keccak256(hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - constants.signatureLength).toString('hex')));
+const getHash = (plaintextBuffer, isSigned) => {
+  if(isSigned){
+    return keccak256(hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - constants.signatureLength).toString('hex')));
+  } else {
+    return keccak256(hexToBytes(plaintextBuffer.toString('hex')));
+
+  }
+}
 
 const ecRecoverPubKey = (messageHash, signature) => {
 // From eth-lib
@@ -280,9 +288,8 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
 
     envelope[0] |= constants.isSignedMask; 
     const hash = keccak256("0x" + envelope.toString('hex'));
-
-    const s = secp256k1_.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));
-    envelope = Buffer.concat([envelope, s.signature]);
+    const s = secp256k1_.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));   
+    envelope = Buffer.concat([envelope, s.signature, Buffer.from([s.recovery])]);
   }
 
   return envelope;
