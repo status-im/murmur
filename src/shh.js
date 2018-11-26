@@ -1,6 +1,7 @@
-const devp2p = require('ethereumjs-devp2p');
 const rlp = require('rlp-encoding');
 const Events = require('events');
+const messages = require('./messages.js');
+
 
 class SHH {
   constructor(version, peer, send) {
@@ -11,31 +12,33 @@ class SHH {
   }
 
   _handleMessage (code, data) {
-    console.dir("----- whisper handleMessage")
-    console.dir(code)
+ //   console.dir("----- whisper handleMessage")
+   // console.dir(code)
 
     if (code === 0) {
       const payload = rlp.decode(data)
-      console.dir("whisper status")
-      console.dir("version: " + payload[0].toString('hex'))
-      console.dir("something: " + payload[1].toString('hex'))
+     // console.dir("whisper status")
+      //console.dir("version: " + payload[0].toString('hex'))
+     // console.dir("something: " + payload[1].toString('hex'))
       this.sendMessage(code, payload)
     }
     if (code === 1) {
       const payload = rlp.decode(data)
-      console.dir("whisper received message")
-      console.dir("contains " + payload.length + " envelopes")
+    //  console.dir("whisper received message")
+   //   console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
-
+               
+/*
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
         console.dir("ttl: " + devp2p._util.buffer2int(ttl))
         console.dir("topic: " + topic.toString('hex'))
         console.dir("data (size): " + data.length)
         console.dir("nonce: " + devp2p._util.buffer2int(nonce))
-
+*/
+      
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
         this.events.emit('message', envelope)
       })
@@ -49,6 +52,10 @@ class SHH {
 
   sendMessage (code, payload) {
     this.send(code, rlp.encode(payload))
+  }
+
+  sendRawMessage(code, payload) {
+    this.send(code, payload)
   }
 
 }

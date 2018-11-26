@@ -2,8 +2,14 @@ const { randomBytes, pbkdf2 } = require('crypto')
 const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
+const keccak256Buffer = require('js-sha3').keccak256;
+const {toBufferBE} = require('bigint-buffer');
+const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
+const Big = require('big.js');
+const pow = require('./pow');
+
 
 class Manager {
 
@@ -20,7 +26,7 @@ class Manager {
 
   listenToProviderEvents() {
     this.provider.events.on('post', (payload) => {
-      const {
+      let {
         symKeyID,
         pubKey,
         sig,
@@ -31,11 +37,87 @@ class Manager {
         powTarget,
         targetPeer
       } = payload;
-      const messagePayload = payload.payload;
+      const messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
 
-      // TODO: sign and send message to node
-      // this.node.events.emit("ssh_send_message", message)
-      this.node.broadcast("ssh_send_message", payload)
+
+      const options = {};
+
+      if(ttl == 0){
+        ttl = 50; // Default TTL
+      }
+
+      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+
+      if(!!sig){
+        options.from = this.keys[sig];
+        if(!options.from || !options.from.privKey){
+          // TODO: trigger error No identity found
+          console.log("No identity found");
+        }
+      }
+
+      // Set symmetric key that is used to encrypt the message
+      if(!!symKeyID){ // symKeyGiveng
+        if(!topic){
+          // TODO: trigger error:  Topic is required
+          console.log("Topic is required");
+
+        }
+
+        options.symKey = this.keys[symKeyID];
+        if (!options.symKey || !options.symKey.symmetricKey) console.log("NoSimKeyFound");// TODO trigger error:  No simkey found
+
+        // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
+      }
+      
+      let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {
+        if(err)
+          console.log(err)
+      });
+
+      if(options.symKey){
+        messages.encryptSymmetric(topic, envelope, options, (err, encryptedMessage) => {
+          if(err){
+            // TODO print error encrypting msg
+            return;
+          }
+
+          const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
+          
+          // should be around 0.005 
+          // TODO: Pow calculation aint working properly. Compare code against geth
+          //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
+          
+          // TODO: ensure pow > minPow
+
+          let nonceBuffer = toBufferBE(powResult.nonce, 8)
+          let non0 = false;
+          let val = [];
+          for(let i = 0; i < nonceBuffer.length; i++){
+            if(nonceBuffer[i] != 0){
+              non0 = true;
+            }
+            if(non0){
+              val.push(nonceBuffer[i]);
+            }
+          }
+          nonceBuffer = Buffer.from(val);
+
+
+          const msgEnv = [];
+          msgEnv.push(options.expiry);
+          msgEnv.push(ttl);
+          msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
+          msgEnv.push(encryptedMessage);
+          msgEnv.push(nonceBuffer);
+          
+          const out = [msgEnv];
+          
+          const p = rlp.encode(out);
+
+          this.node.rawBroadcast(p);
+        });
+      }
     });
 
     // TODO: this needs to refactored to take into account different clients
