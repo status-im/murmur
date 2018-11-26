@@ -173,8 +173,7 @@ const decryptSymmetric = (topic, key, data, cb) => {
 
   const salt = data.slice(data.length - constants.aesNonceLength);
   const msg = data.slice(0, data.length - 12 );
-  const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), constants.dummyAuthTag);
-
+  const decrypted = gcm.decrypt(key, salt, msg.slice(0, msg.length - 16), Buffer.from([]), msg.slice(msg.length - 16));
   const msgObj = parseMessage(decrypted.plaintext);
 
   cb(null, msgObj);
@@ -195,11 +194,11 @@ const parseMessage = (message) => {
     start += auxiliaryFieldSize;
     payload = message.slice(start, start + auxiliaryField);
   }
-
+  
   const isSigned = (message.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
   let signature = null;
   if (isSigned) {
-    signature = getSignature(message, start + auxiliaryField);
+    signature = getSignature(message);
     const hash = getHash(message, isSigned);
     pubKey = ecRecoverPubKey(hash, signature);
   }
@@ -210,8 +209,8 @@ const parseMessage = (message) => {
   return assignDefined({}, {payload, pubKey, signature, padding});
 }
 
-const getSignature = (plaintextBuffer, mEnd) => {
-  return "0x" + plaintextBuffer.slice(mEnd, mEnd + constants.signatureLength).toString('hex');
+const getSignature = (plaintextBuffer) => {
+  return "0x" + plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length).toString('hex');
 }
 
 const getHash = (plaintextBuffer, isSigned) => {
