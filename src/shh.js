@@ -29,15 +29,7 @@ class SHH {
 
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
-        
-        if(topic.toString('hex') == '27ee704f'){
-          const key = Buffer.from('e0c69378eaa4845cd27036f7b77447c2ab0ede5389a178839bc2b44d8441d07c', 'hex');
-          messages.decryptSymmetric(topic, key, data, (c, s) => {
-            console.log(s.payload.toString())
-          });
-        }
-        
-        
+               
 /*
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
@@ -46,7 +38,6 @@ class SHH {
         console.dir("data (size): " + data.length)
         console.dir("nonce: " + devp2p._util.buffer2int(nonce))
 */
-
       
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
         this.events.emit('message', envelope)

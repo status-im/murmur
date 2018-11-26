@@ -85,7 +85,7 @@ class Manager {
           const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
           
           // should be around 0.005 
-          // TODO: Pow calculation aint working properly. Compare against geth
+          // TODO: Pow calculation aint working properly. Compare code against geth
           //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
           
           // TODO: ensure pow > minPow
