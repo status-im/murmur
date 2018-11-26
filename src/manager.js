@@ -200,10 +200,6 @@ class Manager {
       const messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
 
 
-
-      // TODO: move to messages
-      padding = padding | Buffer.from([]);
-
       const options = {};
 
       if(ttl == 0){
@@ -240,17 +236,18 @@ class Manager {
       });
 
       if(options.symKey){
-        messages.encryptSymmetric(topic, envelope, options, (err, res) => {
+        messages.encryptSymmetric(topic, envelope, options, (err, encryptedMessage) => {
           if(err){
             // TODO print error encrypting msg
             return;
           }
 
-          const powResult = ProofOfWork(powTarget, powTime, ttl, topic, envelope, options.expiry);
+          const powResult = ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
           
 
           // should be around 0.005 
-          // console.log(calculatePoW(options.expiry, ttl, topic, envelope, respow.nonce))
+          // TODO: Pow calculation aint working properly. Compare against geth
+          //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
           
           // TODO: ensure pow > minPow
           
@@ -274,18 +271,14 @@ class Manager {
           msgEnv.push(options.expiry);
           msgEnv.push(ttl);
           msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
-          msgEnv.push(envelope);
+          msgEnv.push(encryptedMessage);
           msgEnv.push(nonceBuffer);
           
           const out = [msgEnv];
           
           const p = rlp.encode(out);
 
-          this.node.rawBroadcast(p)
-          
-
-     
-
+          this.node.rawBroadcast(p);
         });
       }
     });

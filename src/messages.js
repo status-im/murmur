@@ -8,6 +8,7 @@ const constants = require('./constants');
 const {sign} = require("eth-lib/lib/account");
 const { randomBytes, pbkdf2 } = require('crypto')
 const stripHexPrefix = require('strip-hex-prefix');
+const secp256k1_ = require('secp256k1')
 
 
 /**
@@ -154,42 +155,30 @@ const encryptSymmetric = (topic, envelope, options, cb) => {
     const errMsg = "invalid key provided for symmetric encryption, size: " + symKey.length;
     if(cb) return cb(errMsg);
     throw errMsg;
-	}
+  }
+  
+  const salt = randomBytes(constants.aesNonceLength) ;
 
-  crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
-    if (err) {
-      if(cb) return cb(err);
-      throw err;
-    }
-    const salt = randomBytes(constants.aesNonceLength);
-    const encrypted = gcm.encrypt(symKey, salt, envelope, Buffer.from([]))
-    envelope = Buffer.concat([encrypted.ciphertext, salt]);
+  const encrypted = gcm.encrypt(symKey, salt, envelope, Buffer.from([]))
+  envelope = Buffer.concat([encrypted.ciphertext, encrypted.auth_tag, salt]);
 
-    cb(null, envelope);
-  });
+  cb(null, envelope);
 }
 
 const decryptSymmetric = (topic, key, data, cb) => {
-  crypto.pbkdf2(topic, Buffer.from([]), 65536, constants.aesNonceLength, 'sha256', (err, iv) => {
-    if (err) {
-      if(cb) return cb(err);
-      throw err;
-    }
+  if (data.length < constants.aesNonceLength) {
+    const errorMsg = "missing salt or invalid payload in symmetric message";
+    if(cb) return cb(errorMsg);
+    throw errorMsg;
+  }
 
-    if (data.length < constants.aesNonceLength) {
-      const errorMsg = "missing salt or invalid payload in symmetric message";
-      if(cb) return cb(errorMsg);
-      throw errorMsg;
-    }
+  const salt = data.slice(data.length - constants.aesNonceLength);
+  const msg = data.slice(0, data.length - 12 );
+  const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), constants.dummyAuthTag);
 
-    const salt = data.slice(data.length - constants.aesNonceLength);
-    const msg = data.slice(0, data.length - 28);
-    const decrypted = gcm.decrypt(key, salt, msg, Buffer.from([]), constants.dummyAuthTag);
+  const msgObj = parseMessage(decrypted.plaintext);
 
-    const msgObj = parseMessage(decrypted.plaintext);
-
-    cb(null, msgObj);
-  });
+  cb(null, msgObj);
 }
 
 const parseMessage = (message) => {
@@ -261,7 +250,7 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
   let envelope = Buffer.from([0]); // No flags
   envelope = addPayloadSizeField(envelope, messagePayload);
   envelope = Buffer.concat([envelope, messagePayload]);
-      
+
   if(!!padding){
     envelope = Buffer.concat([envelope, padding]);
   } else {
@@ -291,10 +280,9 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
 
     envelope[0] |= constants.isSignedMask; 
     const hash = keccak256("0x" + envelope.toString('hex'));
-    const s = sign(hash, options.from.privKey);
-    const signature = Buffer.from(stripHexPrefix(s), 'hex');
 
-    envelope = Buffer.concat([envelope, signature]);
+    const s = secp256k1_.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));
+    envelope = Buffer.concat([envelope, s.signature]);
   }
 
   return envelope;
@@ -307,4 +295,5 @@ module.exports = {
   encryptSymmetric,
   hexToBytes,
   buildMessage,
+  parseMessage
 };
