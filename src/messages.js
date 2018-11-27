@@ -157,15 +157,11 @@ const decryptAsymmetric = (key, data, cb) => {
   cb(null, msgObj);
 }
 
-const encryptAsymmetric = (envelope, options, cb) => {
+const encryptAsymmetric = (envelope, pubKey, cb) => {
   const ephemeralKey = crypto.createECDH('secp256k1');
   ephemeralKey.generateKeys();
 
-  const encryptionKey = crypto.createECDH('secp256k1');
-  encryptionKey.setPrivateKey(Buffer.from(stripHexPrefix(options.privateKey.privKey), 'hex'));
-  encryptionKey.getPublicKey();
-
-  const z = ephemeralKey.computeSecret(encryptionKey.getPublicKey());
+  const z = ephemeralKey.computeSecret(Buffer.from(stripHexPrefix(pubKey), 'hex'));
 
   const k = kdf("sha256", z, Buffer.from([]), 32)
   if(k === null) return;
@@ -174,7 +170,7 @@ const encryptAsymmetric = (envelope, options, cb) => {
   const ke = k.slice(0, keyLen);
   let km = k.slice(keyLen);
   km = crypto.createHash("sha256").update(km).digest();
- 
+   
   const em = aes128enc(envelope, ke);
 
   const messageTag = crypto.createHmac('sha256', km).update(em).update("").digest();
