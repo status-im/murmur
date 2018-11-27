@@ -61,62 +61,69 @@ class Manager {
         if(!topic){
           // TODO: trigger error:  Topic is required
           console.log("Topic is required");
-
         }
 
         options.symKey = this.keys[symKeyID];
-        if (!options.symKey || !options.symKey.symmetricKey) console.log("NoSimKeyFound");// TODO trigger error:  No simkey found
+        if (!options.symKey || !options.symKey.symmetricKey) console.log("NoSimKeyFound");// TODO: trigger error:  No simkey found
 
         // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
       }
+
       
       let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {
         if(err)
           console.log(err)
       });
 
+
+
+      const dispatchEncryptedMessage = (err, encryptedMessage) => {
+        if(err){
+          // TODO print error encrypting msg
+          return;
+        }
+
+        const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
+        
+        // should be around 0.005 
+        // TODO: Pow calculation aint working properly. Compare code against geth
+        //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
+        
+        // TODO: ensure pow > minPow
+
+        let nonceBuffer = toBufferBE(powResult.nonce, 8)
+        let non0 = false;
+        let val = [];
+        for(let i = 0; i < nonceBuffer.length; i++){
+          if(nonceBuffer[i] != 0){
+            non0 = true;
+          }
+          if(non0){
+            val.push(nonceBuffer[i]);
+          }
+        }
+        nonceBuffer = Buffer.from(val);
+
+
+        const msgEnv = [];
+        msgEnv.push(options.expiry);
+        msgEnv.push(ttl);
+        msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
+        msgEnv.push(encryptedMessage);
+        msgEnv.push(nonceBuffer);
+        
+        const out = [msgEnv];
+        
+        const p = rlp.encode(out);
+
+        this.node.rawBroadcast(p);
+      }
+
+
       if(options.symKey){
-        messages.encryptSymmetric(topic, envelope, options, (err, encryptedMessage) => {
-          if(err){
-            // TODO print error encrypting msg
-            return;
-          }
-
-          const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
-          
-          // should be around 0.005 
-          // TODO: Pow calculation aint working properly. Compare code against geth
-          //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
-          
-          // TODO: ensure pow > minPow
-
-          let nonceBuffer = toBufferBE(powResult.nonce, 8)
-          let non0 = false;
-          let val = [];
-          for(let i = 0; i < nonceBuffer.length; i++){
-            if(nonceBuffer[i] != 0){
-              non0 = true;
-            }
-            if(non0){
-              val.push(nonceBuffer[i]);
-            }
-          }
-          nonceBuffer = Buffer.from(val);
-
-
-          const msgEnv = [];
-          msgEnv.push(options.expiry);
-          msgEnv.push(ttl);
-          msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
-          msgEnv.push(encryptedMessage);
-          msgEnv.push(nonceBuffer);
-          
-          const out = [msgEnv];
-          
-          const p = rlp.encode(out);
-
-          this.node.rawBroadcast(p);
-        });
+        messages.encryptSymmetric(topic, envelope, options, dispatchEncryptedMessage);
+      } else {
+        messages.encryptAsymmetric(envelope, open, dispatchEncryptedMessage);
       }
     });
 
@@ -145,7 +152,7 @@ class Manager {
       if(this.keys[id]) return cb("key is not unique");
 
       const privKey = randomBytes(constants.privKeyLength);
-      const pubKey = secp256k1.publicKeyCreate(privKey);
+      const pubKey = secp256k1.publicKeyCreate(privKey, false);
 
       this.keys[id] = {
         privKey: "0x" + privKey.toString('hex'),
@@ -164,8 +171,10 @@ class Manager {
 
       this.keys[id] = {
         privKey: "0x" + privKey,
-        pubKey: "0x" + secp256k1.publicKeyCreate(Buffer.from(privKey, "hex")).toString('hex')
+        pubKey: "0x" + secp256k1.publicKeyCreate(Buffer.from(privKey, "hex"), false).toString('hex')
       };
+
+      console.log(this.keys[id])
 
       cb(null, id);
     });
