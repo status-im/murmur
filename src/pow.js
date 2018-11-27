@@ -1,14 +1,9 @@
-const { randomBytes, pbkdf2 } = require('crypto')
-const secp256k1 = require('secp256k1')
-const messages = require('./messages.js')
-const {keccak256} = require("eth-lib/lib/hash");
-const keccak256Buffer = require('js-sha3').keccak256;
-const {toBufferBE} = require('bigint-buffer');
+const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const Big = require('big.js');
-const JSBI = require('jsbi');
+const Uint64BE = require("int64-buffer").Uint64BE;
 
 function hexStringToDecString(s) {
     function add(x, y) {
@@ -92,12 +87,14 @@ function hexStringToDecString(s) {
   const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
 
     let buf = Buffer.allocUnsafe(32).fill(0);
-    const h = Buffer.from(keccak256Buffer(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
+    const h = Buffer.from(keccak256(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
+    
+    const nonceBuf = (new Uint64BE(Nonce.toString(), 16)).toBuffer();
 
     buf = Buffer.concat([h, buf]);
-    buf = Buffer.concat([buf.slice(0, buf.length - toBufferBE(Nonce, 8).length), toBufferBE(Nonce, 8)]);
-
-    const d = Buffer.from(keccak256Buffer(buf));
+    buf = Buffer.concat([buf.slice(0, buf.length - nonceBuf.length), nonceBuf]);
+    
+    const d = Buffer.from(keccak256(buf));
     const size = 20 + Data.length;
 
     const firstBit = firstBitSet(d);
@@ -128,23 +125,23 @@ function hexStringToDecString(s) {
     }
 
     let buf = Buffer.alloc(32);
-    const h = Buffer.from(keccak256Buffer(rlp.encode([expiry, ttl, topic, data])), 'hex');
-
+    const h = Buffer.from(keccak256(rlp.encode([expiry, ttl, topic, data])), 'hex');
+    
     buf = Buffer.concat([h, buf]);
 
     let bestBit = -1;
     let firstBit;
-
-    let resNonce;
-
-    const finish = JSBI.BigInt(getTime() + powTime * 2 * NS_PER_SEC);
-
-    outerLoop:
-    for(let nonce = JSBI.BigInt(0); JSBI.lessThan(getTime(), finish); ){
+  
+    let resNonce; 
+    
+    const finish = getTime() + powTime * 2 * NS_PER_SEC;
+    
+    outerLoop: 
+    for(let nonce = Big(0); getTime() < finish; ){
       for(let i = 0; i < 1024; i++){
-        buf = Buffer.concat([buf.slice(0, buf.length - 8), toBufferBE(nonce, 8)]);
-
-        const d = Buffer.from(keccak256Buffer(buf));
+        buf = Buffer.concat([buf.slice(0, buf.length - 8), (new Uint64BE(nonce.toString(), 16)).toBuffer()]);
+        
+        const d = Buffer.from(keccak256(buf));
         const size = 20 + data.length;
         const firstBit = firstBitSet(d);
 
@@ -155,7 +152,7 @@ function hexStringToDecString(s) {
             break outerLoop;
           }
         }
-        nonce++
+        nonce = nonce.plus(new Big(1));
       }
     }
 
@@ -166,8 +163,8 @@ function hexStringToDecString(s) {
     }
 
     console.log("Found nonce! " + resNonce);
-
-    return {expiry, target, nonce: resNonce};
+    
+    return {expiry, target, nonce: (new Uint64BE(resNonce.toString(), 16)).toBuffer()};
   }
 
 
