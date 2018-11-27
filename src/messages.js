@@ -147,6 +147,22 @@ const decryptAsymmetric = (key, data, cb) => {
   cb(null, msgObj);
 }
 
+const encryptAsymmetric = (envelope, options, cb) => {
+  const R = crypto.createECDH('secp256k1');
+  R.generateKeys();
+
+  const privKey = crypto.createECDH('secp256k1');
+  privKey.setPrivateKey(Buffer.from(stripHexPrefix(options.privateKey.privKey), 'hex'));
+  privKey.getPublicKey();
+
+  const z = R.computeSecret(privKey.getPublicKey());
+
+  const k = kdf("sha256", z, Buffer.from([]), 32)
+  if(k === null) return;
+
+  // TODO ....
+}
+
 const encryptSymmetric = (topic, envelope, options, cb) => {
   const symKey = Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex');
 
