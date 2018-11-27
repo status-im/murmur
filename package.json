@@ -23,9 +23,6 @@
     "sha3": "^2.0.0",
     "strip-hex-prefix": "^1.0.0"
   },
-  "devDependencies": {
-    "web3": "^1.0.0-beta.36"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
