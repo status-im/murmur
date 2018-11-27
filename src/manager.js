@@ -39,7 +39,6 @@ class Manager {
       } = payload;
       const messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
 
-
       const options = {};
 
       if(ttl == 0){
@@ -69,7 +68,7 @@ class Manager {
 
         // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
       }
-      
+
       let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {
         if(err)
           console.log(err)
@@ -83,11 +82,11 @@ class Manager {
           }
 
           const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
-          
-          // should be around 0.005 
+
+          // should be around 0.005
           // TODO: Pow calculation aint working properly. Compare code against geth
           //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
-          
+
           // TODO: ensure pow > minPow
 
           let nonceBuffer = toBufferBE(powResult.nonce, 8)
@@ -103,16 +102,17 @@ class Manager {
           }
           nonceBuffer = Buffer.from(val);
 
-
           const msgEnv = [];
           msgEnv.push(options.expiry);
           msgEnv.push(ttl);
           msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
           msgEnv.push(encryptedMessage);
           msgEnv.push(nonceBuffer);
-          
+
+          this.sendEnvelopeToSubscribers(msgEnv);
+
           const out = [msgEnv];
-          
+
           const p = rlp.encode(out);
 
           this.node.rawBroadcast(p);
@@ -267,71 +267,71 @@ class Manager {
     });
   }
 
+  sendEnvelopeToSubscribers(message) {
+    console.dir('received message, sending to subscribers...');
+
+    let [expiry, ttl, topic, data, nonce] = message;
+
+    let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
+    if (!topicSubscriptions) {
+      return;
+    }
+
+    let id = keccak256(message.join(''));
+
+    for (let subscriptionId of Object.keys(topicSubscriptions)) {
+
+      const decryptCB = (err, decrypted) => {
+        console.dir("--------------");
+        console.dir(id);
+        console.log(decrypted)
+        if(!decrypted) return;
+        // console.dir(decrypted.payload.toString());
+        //onsole.dir(decrypted.pubKey.toString('hex'));
+        console.dir("--------------");
+
+        this.provider.transmit({
+          "jsonrpc": "2.0",
+          "method": "shh_subscription",
+          "params": {
+            subscription: subscriptionId,
+            result: {
+              sig: "0x" + decrypted.pubKey.toString('hex'),
+              // recipientPublicKey: null,
+              // ttl: ttl,
+              ttl: 10, // TODO: correct value
+              timestamp: 1498577270, // TODO: correct value
+              topic: "0x" + topic.toString('hex'),
+              payload: "0x" + decrypted.payload.toString('hex'),
+              //padding: decrypted.padding.toString('hex'),
+              padding: null,
+              pow: 0.671, // TODO: correct value
+              hash: id
+            }
+          }
+        })
+        //this.provider.
+      }
+
+      console.dir(">>>>> subscription");
+      let keyId = topicSubscriptions[subscriptionId].symKeyID;
+      if (!keyId) {
+        keyId = topicSubscriptions[subscriptionId].privateKeyID;
+        let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
+        messages.decryptAsymmetric(key, data, decryptCB);
+      } else {
+        let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
+        messages.decryptSymmetric(topic, key, data, decryptCB);
+      }
+
+    }
+    // console.dir(message)
+    // TODO: send to clients sbuscribed to this message topic
+  }
+
   listenToNodeEvents() {
     this.node.events.on('shh_message', (message) => {
-      console.dir('received message, sending to subscribers...');
-
-      let [expiry, ttl, topic, data, nonce] = message;
-
-      let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
-      if (!topicSubscriptions) {
-        return;
-      }
-
-      let id = keccak256(message.join(''));
-
-      for (let subscriptionId of Object.keys(topicSubscriptions)) {
-
-        const decryptCB = (err, decrypted) => {
-          console.dir("--------------");
-          console.dir(id);
-          console.log(decrypted)
-          if(!decrypted) return;
-         // console.dir(decrypted.payload.toString());
-          //onsole.dir(decrypted.pubKey.toString('hex'));
-          console.dir("--------------");
-  
-          this.provider.transmit({
-            "jsonrpc": "2.0",
-            "method": "shh_subscription",
-            "params": {
-              subscription: subscriptionId,
-              result: {
-                sig: "0x" + decrypted.pubKey.toString('hex'),
-                // recipientPublicKey: null,
-                // ttl: ttl,
-                ttl: 10, // TODO: correct value
-                timestamp: 1498577270, // TODO: correct value
-                topic: "0x" + topic.toString('hex'),
-                payload: "0x" + decrypted.payload.toString('hex'),
-                //padding: decrypted.padding.toString('hex'),
-                padding: null,
-                pow: 0.671, // TODO: correct value
-                hash: id
-              }
-            }
-          })
-          //this.provider.
-        }
-
-
-        console.dir(">>>>> subscription");
-        let keyId = topicSubscriptions[subscriptionId].symKeyID;
-        if (!keyId) {
-          keyId = topicSubscriptions[subscriptionId].privateKeyID;
-          let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
-          messages.decryptAsymmetric(key, data, decryptCB);
-        } else {
-          let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
-          messages.decryptSymmetric(topic, key, data, decryptCB);
-        }
-
-
-        
-
-      }
-      // console.dir(message)
-      // TODO: send to clients sbuscribed to this message topic
+      this.sendEnvelopeToSubscribers(message);
     })
   }
 
