@@ -1,7 +1,7 @@
 {
   "name": "murmur-client",
   "version": "0.0.2",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "big.js": "^5.2.2",
     "bigint-buffer": "^1.1.2",
@@ -23,7 +23,9 @@
     "sha3": "^2.0.0",
     "strip-hex-prefix": "^1.0.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "web3": "^1.0.0-beta.36"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

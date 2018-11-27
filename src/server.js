@@ -7,6 +7,8 @@ const Provider = require('./provider');
 const provider = new Provider();
 
 const node = require('./client.js');
+node.start();
+node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303})
 
 const Manager = require('./manager')
 const manager = new Manager(node, provider)
