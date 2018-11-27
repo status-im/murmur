@@ -145,7 +145,7 @@ class Manager {
       if(this.keys[id]) return cb("key is not unique");
 
       const privKey = randomBytes(constants.privKeyLength);
-      const pubKey = secp256k1.publicKeyCreate(privKey);
+      const pubKey = secp256k1.publicKeyCreate(privKey, false);
 
       this.keys[id] = {
         privKey: "0x" + privKey.toString('hex'),
@@ -164,7 +164,7 @@ class Manager {
 
       this.keys[id] = {
         privKey: "0x" + privKey,
-        pubKey: "0x" + secp256k1.publicKeyCreate(Buffer.from(privKey, "hex")).toString('hex')
+        pubKey: "0x" + secp256k1.publicKeyCreate(Buffer.from(privKey, "hex"), false).toString('hex')
       };
 
       cb(null, id);
@@ -281,22 +281,16 @@ class Manager {
       let id = keccak256(message.join(''));
 
       for (let subscriptionId of Object.keys(topicSubscriptions)) {
-        console.dir(">>>>> subscription");
-        let keyId = topicSubscriptions[subscriptionId].symKeyID;
-        if (!keyId) {
-          // TODO: try asymmetric decryption instead...
-          return;
-        }
-        let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
 
-        // TODO: room for improvement here, only needs to decrypt once, just need sto verify each key is valid/same for the same topic
-        messages.decryptSymmetric(topic, key, data, (err, decrypted) => {
+        const decryptCB = (err, decrypted) => {
           console.dir("--------------");
           console.dir(id);
-          console.dir(decrypted.payload.toString());
-          console.dir(decrypted.pubKey.toString('hex'));
+          console.log(decrypted)
+          if(!decrypted) return;
+         // console.dir(decrypted.payload.toString());
+          //onsole.dir(decrypted.pubKey.toString('hex'));
           console.dir("--------------");
-
+  
           this.provider.transmit({
             "jsonrpc": "2.0",
             "method": "shh_subscription",
@@ -318,7 +312,23 @@ class Manager {
             }
           })
           //this.provider.
-        });
+        }
+
+
+        console.dir(">>>>> subscription");
+        let keyId = topicSubscriptions[subscriptionId].symKeyID;
+        if (!keyId) {
+          keyId = topicSubscriptions[subscriptionId].privateKeyID;
+          let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
+          messages.decryptAsymmetric(key, data, decryptCB);
+        } else {
+          let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
+          messages.decryptSymmetric(topic, key, data, decryptCB);
+        }
+
+
+        
+
       }
       // console.dir(message)
       // TODO: send to clients sbuscribed to this message topic
