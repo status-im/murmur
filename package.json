@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "main": "src/index.js",
   "dependencies": {
     "big.js": "^5.2.2",
