@@ -109,8 +109,6 @@ function hexStringToDecString(s) {
 
 
   function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
-    topic = Buffer.from(stripHexPrefix(topic), 'hex');
-
     if(powTarget === 0){
       // TODO: Pow is not required
       return {};
