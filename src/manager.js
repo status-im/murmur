@@ -68,6 +68,9 @@ class Manager {
         if (!options.symKey || !options.symKey.symmetricKey) console.log("NoSimKeyFound");// TODO trigger error:  No simkey found
 
         // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
+      } else {
+          // TODO: validate that either pubkey or symkey exists
+          // TODO: check if valid public key
       }
 
       let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {
@@ -75,48 +78,51 @@ class Manager {
           console.log(err)
       });
 
+      const dispatchEnvelope = (err, encryptedMessage) => {
+        if(err){
+          // TODO print error encrypting msg
+          return;
+        }
+
+        const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
+
+        // should be around 0.005
+        // TODO: Pow calculation aint working properly. Compare code against geth
+        //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
+
+        let nonceBuffer =  powResult.nonce;
+        let non0 = false;
+        let val = [];
+        for(let i = 0; i < nonceBuffer.length; i++){
+          if(nonceBuffer[i] != 0){
+            non0 = true;
+          }
+          if(non0){
+            val.push(nonceBuffer[i]);
+          }
+        }
+        nonceBuffer = Buffer.from(val);
+
+        const msgEnv = [];
+        msgEnv.push(options.expiry);
+        msgEnv.push(ttl);
+        msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
+        msgEnv.push(encryptedMessage);
+        msgEnv.push(nonceBuffer);
+
+        this.sendEnvelopeToSubscribers(msgEnv);
+
+        const out = [msgEnv];
+
+        const p = rlp.encode(out);
+
+        this.node.rawBroadcast(p);
+      }
+
       if(options.symKey){
-        messages.encryptSymmetric(topic, envelope, options, (err, encryptedMessage) => {
-          if(err){
-            // TODO print error encrypting msg
-            return;
-          }
-
-          const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
-          // should be around 0.005
-          // TODO: Pow calculation aint working properly. Compare code against geth
-          //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
-
-          // TODO: ensure pow > minPow
-
-          let nonceBuffer =  powResult.nonce;
-          let non0 = false;
-          let val = [];
-          for(let i = 0; i < nonceBuffer.length; i++){
-            if(nonceBuffer[i] != 0){
-              non0 = true;
-            }
-            if(non0){
-              val.push(nonceBuffer[i]);
-            }
-          }
-          nonceBuffer = Buffer.from(val);
-
-          const msgEnv = [];
-          msgEnv.push(options.expiry);
-          msgEnv.push(ttl);
-          msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
-          msgEnv.push(encryptedMessage);
-          msgEnv.push(nonceBuffer);
-
-          this.sendEnvelopeToSubscribers(msgEnv);
-
-          const out = [msgEnv];
-
-          const p = rlp.encode(out);
-
-          this.node.rawBroadcast(p);
-        });
+        messages.encryptSymmetric(topic, envelope, options, dispatchEnvelope);
+      } else {
+        messages.encryptAsymmetric(envelope, pubKey, dispatchEnvelope);
       }
     });
 
@@ -283,8 +289,6 @@ class Manager {
 
       const decryptCB = (err, decrypted) => {
         console.dir("--------------");
-        console.dir(id);
-        console.log(decrypted)
         if(!decrypted) return;
         // console.dir(decrypted.payload.toString());
         //onsole.dir(decrypted.pubKey.toString('hex'));

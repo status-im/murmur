@@ -90,6 +90,16 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
   return k.slice(0, 32);
 }
 
+
+const aes128enc = (m, key) => {
+  const blSize = 16;
+  const iv = randomBytes(blSize);
+  var cipher = crypto.createCipheriv("aes-128-ctr", key, iv);
+  var firstChunk = cipher.update(m);
+  var secondChunk = cipher.final();
+  return (Buffer.concat([iv, firstChunk, secondChunk]));
+} 
+
 const aes128dec = (ct, key) => {
   const blSize = 16;
   const iv = ct.slice(0, blSize);
@@ -143,6 +153,29 @@ const decryptAsymmetric = (key, data, cb) => {
   const decrypted = aes128dec(ct, ke);
 
   const msgObj = parseMessage(decrypted);
+
+  cb(null, msgObj);
+}
+
+const encryptAsymmetric = (envelope, pubKey, cb) => {
+  const ephemeralKey = crypto.createECDH('secp256k1');
+  ephemeralKey.generateKeys();
+
+  const z = ephemeralKey.computeSecret(Buffer.from(stripHexPrefix(pubKey), 'hex'));
+
+  const k = kdf("sha256", z, Buffer.from([]), 32)
+  if(k === null) return;
+
+  const keyLen = 16;
+  const ke = k.slice(0, keyLen);
+  let km = k.slice(keyLen);
+  km = crypto.createHash("sha256").update(km).digest();
+   
+  const em = aes128enc(envelope, ke);
+
+  const messageTag = crypto.createHmac('sha256', km).update(em).update("").digest();
+
+  const msgObj = Buffer.concat([ephemeralKey.getPublicKey(), em, messageTag]);
 
   cb(null, msgObj);
 }
@@ -299,6 +332,7 @@ module.exports = {
   decryptSymmetric,
   decryptAsymmetric,
   encryptSymmetric,
+  encryptAsymmetric,
   hexToBytes,
   buildMessage,
   parseMessage
