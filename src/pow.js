@@ -1,13 +1,9 @@
-const { randomBytes, pbkdf2 } = require('crypto')
-const secp256k1 = require('secp256k1')
-const messages = require('./messages.js')
-const {keccak256} = require("eth-lib/lib/hash");
-const keccak256Buffer = require('js-sha3').keccak256;
-const {toBufferBE} = require('bigint-buffer');
+const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const Big = require('big.js');
+const Uint64BE = require("int64-buffer").Uint64BE;
 
 function hexStringToDecString(s) {
     function add(x, y) {
@@ -16,13 +12,13 @@ function hexStringToDecString(s) {
         var y = y.split('').map(Number);
         while(x.length || y.length) {
             var s = (x.pop() || 0) + (y.pop() || 0) + c;
-            r.unshift(s < 10 ? s : s - 10); 
+            r.unshift(s < 10 ? s : s - 10);
             c = s < 10 ? 0 : 1;
         }
         if(c) r.unshift(c);
         return r.join('');
     }
-  
+
     var dec = '0';
     s.split('').forEach(function(chr) {
         var n = parseInt(chr, 16);
@@ -31,11 +27,11 @@ function hexStringToDecString(s) {
             if(n & t) dec = add(dec, '1');
         }
     });
-  
+
     return dec;
   }
-  
-  
+
+
   const BYTE1 = 1;       // 0001
   const BYTE2 = 1 << 1;  // 0010
   const BYTE3 = 1 << 2;  // 0100
@@ -44,8 +40,8 @@ function hexStringToDecString(s) {
   const BYTE6 = 1 << 5;  // 0010
   const BYTE7 = 1 << 6;  // 0100
   const BYTE8 = 1 << 7;  // 1000
-  
-  
+
+
   // Determine the index of the first bit set (BE)
   const firstBitSet = (v) => {
       let byteindex = 0
@@ -59,12 +55,12 @@ function hexStringToDecString(s) {
           if((byte & BYTE6) == 32) return byteindex + 5;
           if((byte & BYTE7) == 64) return byteindex + 6;
           if((byte & BYTE8) == 128) return byteindex + 7;
-  
+
           byteindex += 8;
       }
-  } 
-  
- 
+  }
+
+
 
   const powToFirstBit = (pow, data, ttl) => {
     const size = 20 + data.length;
@@ -74,63 +70,65 @@ function hexStringToDecString(s) {
     }
     return res;
   }
-  
-  
+
+
   const NS_PER_SEC = 1e9;
-  
-  
+
+
   const getTime = () => {
     const t = process.hrtime();
     return t[0] * NS_PER_SEC + t[1];
   }
-  
-  
+
+
   // Given a Expiry, TTL, Topic, Nonce and Data Buffer
-  // calculate the Pow 
+  // calculate the Pow
   // Useful to validate a envelope
   const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
-  
+
     let buf = Buffer.allocUnsafe(32).fill(0);
-    const h = Buffer.from(keccak256Buffer(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
+    const h = Buffer.from(keccak256(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
     
+    const nonceBuf = (new Uint64BE(Nonce.toString(), 16)).toBuffer();
+
     buf = Buffer.concat([h, buf]);
-    buf = Buffer.concat([buf.slice(0, buf.length - toBufferBE(Nonce, 8).length), toBufferBE(Nonce, 8)]);
+    buf = Buffer.concat([buf.slice(0, buf.length - nonceBuf.length), nonceBuf]);
     
-    const d = Buffer.from(keccak256Buffer(buf));
+    const d = Buffer.from(keccak256(buf));
     const size = 20 + Data.length;
-    
+
     const firstBit = firstBitSet(d);
-    
+
     let x = (new Big(2)).pow(firstBit)
     x = x.div(new Big(size))
     x = x.div(new Big(TTL));
-  
+
     return x.toString()
   }
-  
-  
-  
+
+
+
   function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
     topic = Buffer.from(stripHexPrefix(topic), 'hex');
-  
+
     if(powTarget === 0){
       // TODO: Pow is not required
       return {};
-    } 
-  
+    }
+
     let target;
-  
+
     if(powTarget === undefined){
       expiry += powTime;
     } else {
       target = powToFirstBit(powTarget, data, ttl);
     }
-  
+
     let buf = Buffer.alloc(32);
-    const h = Buffer.from(keccak256Buffer(rlp.encode([expiry, ttl, topic, data])), 'hex');
+    const h = Buffer.from(keccak256(rlp.encode([expiry, ttl, topic, data])), 'hex');
     
     buf = Buffer.concat([h, buf]);
-  
+
     let bestBit = -1;
     let firstBit;
   
@@ -139,14 +137,14 @@ function hexStringToDecString(s) {
     const finish = getTime() + powTime * 2 * NS_PER_SEC;
     
     outerLoop: 
-    for(let nonce = BigInt(0); getTime() < finish; ){
+    for(let nonce = Big(0); getTime() < finish; ){
       for(let i = 0; i < 1024; i++){
-        buf = Buffer.concat([buf.slice(0, buf.length - 8), toBufferBE(nonce, 8)]);
+        buf = Buffer.concat([buf.slice(0, buf.length - 8), (new Uint64BE(nonce.toString(), 16)).toBuffer()]);
         
-        const d = Buffer.from(keccak256Buffer(buf));
+        const d = Buffer.from(keccak256(buf));
         const size = 20 + data.length;
         const firstBit = firstBitSet(d);
-        
+
         if(firstBit > bestBit){
           resNonce = nonce;
           bestBit = firstBit;
@@ -154,21 +152,21 @@ function hexStringToDecString(s) {
             break outerLoop;
           }
         }
-        nonce++
+        nonce = nonce.plus(new Big(1));
       }
     }
-  
+
     if(resNonce === undefined){
       // CB
       console.log("Failed to reach the PoW target, specified pow time (%d seconds) was insufficient", powTarget);
       return;
     }
-  
+
     console.log("Found nonce! " + resNonce);
     
-    return {expiry, target, nonce: resNonce};
+    return {expiry, target, nonce: (new Uint64BE(resNonce.toString(), 16)).toBuffer()};
   }
-  
+
 
   module.exports = {
     hexStringToDecString,

@@ -9,6 +9,7 @@ const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const Big = require('big.js');
 const pow = require('./pow');
+const Uint64BE = require("int64-buffer").Uint64BE;
 
 
 class Manager {
@@ -77,7 +78,6 @@ class Manager {
           console.log(err)
       });
 
-
       const dispatchEnvelope = (err, encryptedMessage) => {
         if(err){
           // TODO print error encrypting msg
@@ -90,9 +90,7 @@ class Manager {
         // TODO: Pow calculation aint working properly. Compare code against geth
         //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
 
-        // TODO: ensure pow > minPow
-
-        let nonceBuffer = toBufferBE(powResult.nonce, 8)
+        let nonceBuffer =  powResult.nonce;
         let non0 = false;
         let val = [];
         for(let i = 0; i < nonceBuffer.length; i++){
