@@ -1,6 +1,5 @@
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
-const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;

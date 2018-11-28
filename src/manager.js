@@ -2,14 +2,10 @@ const { randomBytes, pbkdf2 } = require('crypto')
 const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
-const keccak256Buffer = require('js-sha3').keccak256;
-const {toBufferBE} = require('bigint-buffer');
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
-const Big = require('big.js');
 const pow = require('./pow');
-const Uint64BE = require("int64-buffer").Uint64BE;
 
 
 class Manager {
