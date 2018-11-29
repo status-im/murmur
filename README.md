@@ -2,9 +2,9 @@ Murmur
 ===
 
 <p align="center">
-A Whisper node / client implementation built in Javascript
+A Whisper node / client implementation built in Javascript, with the goal of being a pure JS project able to run in the browser.
 </p>
-<p align="center" style="color: red; padding: 10px; border: 2px solid red">
+<p align="center">
 <strong>WIP. DO NOT USE IN PRODUCTION. HIGH RISK ⚠</strong>
 </p>
 <br />
@@ -12,13 +12,13 @@ A Whisper node / client implementation built in Javascript
 ## Install
 clone the repo via git:
 ```
-git clone https://github.com/status-im/murmur.git
+$ git clone https://github.com/status-im/murmur.git
 ```
 And then install the dependencies with yarn.
-
+```
 $ cd murmur
 $ npm install
-
+```
 ## Run
 ```
 ./bin/murmur
@@ -35,6 +35,8 @@ import Murmur from 'murmur-client';
 const murmur = new Murmur();
 murmur.start();
 ```
+
+For reference on how to use, please check this [branch](https://github.com/status-im/status-js-desktop/tree/use_murmur) on `status-js-desktop` repository. This readme will be updated once we have a definite implementation for using `murmur` as a dependency of a JS project.
 
 ## Contribution
 
