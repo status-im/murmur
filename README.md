@@ -12,13 +12,13 @@ A Whisper node / client implementation built in Javascript, with the goal of bei
 ## Install
 clone the repo via git:
 ```
-git clone https://github.com/status-im/murmur.git
+$ git clone https://github.com/status-im/murmur.git
 ```
 And then install the dependencies with yarn.
-
+```
 $ cd murmur
 $ npm install
-
+```
 ## Run
 ```
 ./bin/murmur
