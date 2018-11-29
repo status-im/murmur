@@ -85,7 +85,7 @@ function hexStringToDecString(s) {
   // Useful to validate a envelope
   const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
 
-    let buf = Buffer.allocUnsafe(32).fill(0);
+    let buf = Buffer.alloc(32);
     const h = Buffer.from(keccak256(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
     
     const nonceBuf = (new Uint64BE(Nonce.toString(), 16)).toBuffer();
@@ -139,7 +139,6 @@ function hexStringToDecString(s) {
         buf = Buffer.concat([buf.slice(0, buf.length - 8), (new Uint64BE(nonce.toString(), 16)).toBuffer()]);
         
         const d = Buffer.from(keccak256(buf));
-        const size = 20 + data.length;
         const firstBit = firstBitSet(d);
 
         if(firstBit > bestBit){
@@ -154,13 +153,11 @@ function hexStringToDecString(s) {
     }
 
     if(resNonce === undefined){
-      // CB
+      // TODO: CB
       console.log("Failed to reach the PoW target, specified pow time (%d seconds) was insufficient", powTarget);
       return;
     }
 
-    console.log("Found nonce! " + resNonce);
-    
     return {expiry, target, nonce: (new Uint64BE(resNonce.toString(), 16)).toBuffer()};
   }
 
