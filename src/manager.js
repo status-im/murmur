@@ -2,14 +2,10 @@ const { randomBytes, pbkdf2 } = require('crypto')
 const secp256k1 = require('secp256k1')
 const messages = require('./messages.js')
 const {keccak256} = require("eth-lib/lib/hash");
-const keccak256Buffer = require('js-sha3').keccak256;
-const {toBufferBE} = require('bigint-buffer');
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
-const Big = require('big.js');
 const pow = require('./pow');
-const Uint64BE = require("int64-buffer").Uint64BE;
 
 
 class Manager {
@@ -38,15 +34,19 @@ class Manager {
         powTarget,
         targetPeer
       } = payload;
-      const messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
-
-      const options = {};
+      
+      let messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
+      
+      topic = Buffer.from(stripHexPrefix(topic), 'hex');
 
       if(ttl == 0){
         ttl = 50; // Default TTL
       }
 
-      options.expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+      const options = {};
+      
+      const expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
+
 
       if(!!sig){
         options.from = this.keys[sig];
@@ -61,7 +61,10 @@ class Manager {
         if(!topic){
           // TODO: trigger error:  Topic is required
           console.log("Topic is required");
-
+        } else {
+          if(topic.length > 4){
+            console.log("Topic length is incorrect")
+          }
         }
 
         options.symKey = this.keys[symKeyID];
@@ -84,7 +87,7 @@ class Manager {
           return;
         }
 
-        const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, options.expiry);
+        const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
 
         // should be around 0.005
         // TODO: Pow calculation aint working properly. Compare code against geth
@@ -104,9 +107,9 @@ class Manager {
         nonceBuffer = Buffer.from(val);
 
         const msgEnv = [];
-        msgEnv.push(options.expiry);
+        msgEnv.push(powResult.expiry);
         msgEnv.push(ttl);
-        msgEnv.push(Buffer.from(topic.slice(2), 'hex'))
+        msgEnv.push(topic)
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 

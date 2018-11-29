@@ -5,10 +5,7 @@ const {slice, length, toNumber} = require("eth-lib/lib/bytes");
 const constants = require('./constants');
 const { randomBytes } = require('crypto')
 const stripHexPrefix = require('strip-hex-prefix');
-const secp256k1 = new elliptic.ec("secp256k1");
-const secp256k1_ = require('secp256k1')
-// TODO: use only 'secp256k1_'.  the other has a bug signing messages
-
+const secp256k1 = require('secp256k1')
 
 /**
  * Convert a hex string to a byte array
@@ -250,7 +247,7 @@ const parseMessage = (message) => {
 }
 
 const getSignature = (plaintextBuffer) => {
-  return "0x" + plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length).toString('hex');
+  return  plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length);
 }
 
 const getHash = (plaintextBuffer, isSigned) => {
@@ -263,16 +260,8 @@ const getHash = (plaintextBuffer, isSigned) => {
 }
 
 const ecRecoverPubKey = (messageHash, signature) => {
-// From eth-lib
-  const rsv = {
-    r: slice(0, 32, signature).slice(2),
-    s: slice(32, 64, signature).slice(2),
-    v: toNumber(slice(64, length(signature), signature))
-  }
-
-  const ecPublicKey = secp256k1.recoverPubKey(new Buffer(messageHash.slice(2), "hex"), rsv, rsv.v < 2 ? rsv.v : 1 - rsv.v % 2);
-
-  return ecPublicKey.encode('hex');
+  const recovery = signature.slice(64).readIntBE(0, 1);
+  return secp256k1.recover(new Buffer(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false)
 }
 
 const validateDataIntegrity = (k, expectedSize) => {
@@ -327,7 +316,7 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
 
     envelope[0] |= constants.isSignedMask; 
     const hash = keccak256("0x" + envelope.toString('hex'));
-    const s = secp256k1_.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));   
+    const s = secp256k1.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));   
     envelope = Buffer.concat([envelope, s.signature, Buffer.from([s.recovery])]);
   }
 
