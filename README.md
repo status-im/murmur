@@ -14,14 +14,14 @@ clone the repo via git:
 ```
 $ git clone https://github.com/status-im/murmur.git
 ```
-And then install the dependencies with yarn.
+And then install the dependencies with `npm`.
 ```
 $ cd murmur
 $ npm install
 ```
 ## Run
 ```
-./bin/murmur
+$ ./bin/murmur
 ```
 
 Connection to murmur can be done via [web3.js](https://github.com/ethereum/web3.js/) using a `Web3.providers.WebsocketProvider` pointing `ws://localhost:8546`
