@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const gcm = require('node-aes-gcm');
 const elliptic = require("elliptic");
 const {keccak256} = require("eth-lib/lib/hash");
 const {slice, length, toNumber} = require("eth-lib/lib/bytes");
@@ -191,8 +190,11 @@ const encryptSymmetric = (topic, envelope, options, cb) => {
   
   const salt = randomBytes(constants.aesNonceLength) ;
 
-  const encrypted = gcm.encrypt(symKey, salt, envelope, Buffer.from([]))
-  envelope = Buffer.concat([encrypted.ciphertext, encrypted.auth_tag, salt]);
+  const cipher = crypto.createCipheriv('aes-256-gcm', symKey, salt);
+  const ciphertext = Buffer.concat([cipher.update(envelope, 'hex'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  envelope = Buffer.concat([ciphertext, tag, salt]);
 
   cb(null, envelope);
 }
@@ -206,8 +208,13 @@ const decryptSymmetric = (topic, key, data, cb) => {
 
   const salt = data.slice(data.length - constants.aesNonceLength);
   const msg = data.slice(0, data.length - 12 );
-  const decrypted = gcm.decrypt(key, salt, msg.slice(0, msg.length - 16), Buffer.from([]), msg.slice(msg.length - 16));
-  const msgObj = parseMessage(decrypted.plaintext);
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, salt);
+        decipher.setAuthTag(msg.slice(msg.length - 16));
+
+  const message =  Buffer.concat([decipher.update(msg.slice(0, msg.length - 16), 'hex'), decipher.final()]);
+
+  const msgObj = parseMessage(message);
 
   cb(null, msgObj);
 }
