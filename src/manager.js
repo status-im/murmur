@@ -6,7 +6,8 @@ const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const pow = require('./pow');
-
+const Big = require('big.js');
+const Uint64BE = require("int64-buffer").Uint64BE;
 
 class Manager {
 
@@ -88,11 +89,7 @@ class Manager {
         }
 
         const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
-
-        // should be around 0.005
-        // TODO: Pow calculation aint working properly. Compare code against geth
-        //console.log(calculatePoW(options.expiry, ttl, Buffer.from(stripHexPrefix(topic), 'hex'), envelope, powResult.nonce))
-
+                
         let nonceBuffer =  powResult.nonce;
         let non0 = false;
         let val = [];
@@ -281,6 +278,12 @@ class Manager {
 
     let [expiry, ttl, topic, data, nonce] = message;
 
+    // Preparing data
+    nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
+    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
+
+    const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
+
     let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
     if (!topicSubscriptions) {
       return;
@@ -305,14 +308,13 @@ class Manager {
             result: {
               sig: "0x" + decrypted.pubKey.toString('hex'),
               // recipientPublicKey: null,
-              // ttl: ttl,
-              ttl: 10, // TODO: correct value
+              ttl: ttl,
               timestamp: 1498577270, // TODO: correct value
               topic: "0x" + topic.toString('hex'),
               payload: "0x" + decrypted.payload.toString('hex'),
               //padding: decrypted.padding.toString('hex'),
               padding: null,
-              pow: 0.671, // TODO: correct value
+              pow: calculatedPow,
               hash: id
             }
           }

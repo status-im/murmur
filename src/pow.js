@@ -84,27 +84,23 @@ function hexStringToDecString(s) {
   // calculate the Pow
   // Useful to validate a envelope
   const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
-
-    let buf = Buffer.alloc(32);
+    let buf = Buffer.alloc(32, 0);
     const h = Buffer.from(keccak256(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
     
-    const nonceBuf = (new Uint64BE(Nonce.toString(), 16)).toBuffer();
-
     buf = Buffer.concat([h, buf]);
-    buf = Buffer.concat([buf.slice(0, buf.length - nonceBuf.length), nonceBuf]);
+    buf = Buffer.concat([buf.slice(0, buf.length - 8), Nonce]);
     
     const d = Buffer.from(keccak256(buf));
     const size = 20 + Data.length;
 
     const firstBit = firstBitSet(d);
 
-    let x = (new Big(2)).pow(firstBit)
+    let x = (new Big(2)).pow(firstBit);
     x = x.div(new Big(size))
     x = x.div(new Big(TTL));
 
     return x.toString()
   }
-
 
 
   function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
@@ -123,7 +119,7 @@ function hexStringToDecString(s) {
 
     let buf = Buffer.alloc(32);
     const h = Buffer.from(keccak256(rlp.encode([expiry, ttl, topic, data])), 'hex');
-    
+
     buf = Buffer.concat([h, buf]);
 
     let bestBit = -1;
@@ -140,7 +136,6 @@ function hexStringToDecString(s) {
         
         const d = Buffer.from(keccak256(buf));
         const firstBit = firstBitSet(d);
-
         if(firstBit > bestBit){
           resNonce = nonce;
           bestBit = firstBit;
