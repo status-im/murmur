@@ -61,6 +61,21 @@ class Ethereum {
     this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)))
   }
 
+  addStaticPeer(node, cb){
+    this.staticnodes.push(node);
+    this.rlpx.connect({id: node.id, address: node.address, port: node.port})
+      .then(res => {
+        cb(null, true);
+      })
+      .catch(err => {
+        if(err.message.indexOf("Already connected") > -1){
+          cb(null, true);
+        } else {
+          cb(err)
+        }
+      });
+  }
+
   _startRLPX() {
     this.rlpx = new devp2p.RLPx(this.privateKey, {
       dpt: this.dpt,

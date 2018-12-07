@@ -145,6 +145,96 @@ class Manager {
       cb(null, id);
     });
 
+
+    this.provider.events.on("addPeer", (url, cb) => {
+      const urlParts = url.split("@");
+      const ipInfo = urlParts[1].split(":");
+    
+      const id = Buffer.from(urlParts[0].replace("enode://", ""), "hex");
+      const address = ipInfo[0];
+      const port = ipInfo[1];
+    
+      this.node.addStaticPeer({ id, address, port }, (err, data) => {
+        if(err){
+          cb(err);
+        } else {
+          cb(null, data);
+        }
+      });
+    });
+
+
+    // TODO: move this to external file
+
+    const createBloomFilter = (r) => {
+      if(r.topics.length > 0){
+        return topicsToBloom(r.topics);
+      }
+      return topicsToBloom(r.topics);
+    }
+
+    const BloomFilterSize = 64;
+
+    const topicToBloom = topic => {
+      const b = Buffer.alloc(BloomFilterSize, 0);
+      const index = Array(3);
+      for(let j = 0; j < 3; j++){
+        index[j] = int(topic[j])
+        if((topic[3] & (1 << j)) != 0) {
+          index[j] += 256
+        }
+      }
+      for(let j = 0; j < 3; j++){
+        const byteIndex = index[j] / 8;
+        const bitIndex = index[j] % 8;
+        b[byteIndex] = (1 << uint(bitIndex))
+      }
+      return b;
+    }
+    
+    const topicsToBloom = (topics) => {
+      let i = new Big("0");
+      for(let idx = 0; idx < topics.length; idx++){
+        const bloom = topicToBloom(topics[idx]);
+        // TODO: set i equals to i | bloom
+      }
+      
+      let combined = Buffer.alloc(BloomFilterSize, 0);
+      const data = Uint64BE(i).toBuffer();
+      combined = Buffer.concat([data, combined.slice(BloomFilterSize - data.length)]);
+      return combined;
+    }
+
+    const makePayload = (message) => {
+      return rlp.encode([message.from, message.to, createBloomFilter(message), message.limit, null, true]);
+    }
+
+    this.provider.events.on("requestMessages", (minPow, obj, cb) => {
+      const peerId = Buffer.from(obj.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
+      const peer = this.node.rlpx.getPeers().find(x => x._remoteId.equals(peerId));
+      const now = parseInt((new Date()).getTime() / 1000, 10);
+
+      const payload = makePayload(obj);
+
+      const envelope;
+      /*
+      const envelope = makeEnvelop(
+        payload,
+        symKey, // Get symkey
+        publicKey, // Transalte node to pubkey
+        NODEID,
+        minPow,
+        now
+      );
+      */
+
+
+
+      peer._sendMessage(envelope);
+
+      cb(null, true);
+    });
+
     this.provider.events.on("newKeyPair", (cb) => {
       const id = randomBytes(constants.keyIdLength).toString('hex');
 
@@ -175,7 +265,7 @@ class Manager {
 
       cb(null, id);
     });
-
+    
     this.provider.events.on("getPublicKey", (id, cb) => {
       const key = this.keys[id];
       if (!key || !key.pubKey) { return cb("key not found"); }
@@ -272,7 +362,7 @@ class Manager {
       deleteKey(id, cb);
     });
   }
-
+  
   sendEnvelopeToSubscribers(message) {
     console.dir('received message, sending to subscribers...');
 

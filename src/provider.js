@@ -105,6 +105,20 @@ class Provider {
     this.events.emit('getPrivateKey', payload.params[0], cb);
   }
 
+  admin_addPeer(payload, cb) {
+    if (!payload.params[0]) {
+      return cb("enode URL is required");
+    }
+    this.events.emit('addPeer', payload.params[0], cb);
+  }
+
+  shhext_requestMessages(payload, cb) {
+    if (!payload.params[0]) {
+      return cb("message request object");
+    }
+    this.events.emit('requestMessages', this.powTarget, payload.params[0], cb);
+  }
+
   shh_newSymKey(payload, cb) {
     this.events.emit('newSymKey', cb);
   }
@@ -164,6 +178,11 @@ class Provider {
   shh_newMessageFilter(payload, cb) {
     throw new Error("shh_newMessageFilter not implemented yet");
     cb(null, false);
+  }
+
+  shh_markTrustedPeer(payload, cb){
+    // TODO: implement this
+    cb(null, true);
   }
 
   shh_deleteMessageFilter(payload, cb) {
