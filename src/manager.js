@@ -8,6 +8,7 @@ const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
+const bloom = require('./bloom');
 
 class Manager {
 
@@ -50,10 +51,14 @@ class Manager {
 
 
       if(!!sig){
-        options.from = this.keys[sig];
-        if(!options.from || !options.from.privKey){
-          // TODO: trigger error No identity found
-          console.log("No identity found");
+        if(Buffer.isBuffer(sig)){
+          options.from = { privKey: "0x" + sig.toString('hex') };
+        } else {
+          options.from = this.keys[sig];
+          if(!options.from || !options.from.privKey){
+            // TODO: trigger error No identity found
+            console.log("No identity found");
+          }
         }
       }
 
@@ -116,7 +121,12 @@ class Manager {
 
         const p = rlp.encode(out);
 
-        this.node.rawBroadcast(p);
+        if(targetPeer){
+          const peer = this.node.rlpx.getPeers().find(x => x._remoteId.equals(peerId));
+          peer._sendMessage(p);
+        } else {
+          this.node.rawBroadcast(p);
+        }
       }
 
       if(options.symKey){
@@ -164,73 +174,40 @@ class Manager {
     });
 
 
-    // TODO: move this to external file
-
-    const createBloomFilter = (r) => {
-      if(r.topics.length > 0){
-        return topicsToBloom(r.topics);
-      }
-      return topicsToBloom(r.topics);
-    }
-
-    const BloomFilterSize = 64;
-
-    const topicToBloom = topic => {
-      const b = Buffer.alloc(BloomFilterSize, 0);
-      const index = Array(3);
-      for(let j = 0; j < 3; j++){
-        index[j] = int(topic[j])
-        if((topic[3] & (1 << j)) != 0) {
-          index[j] += 256
-        }
-      }
-      for(let j = 0; j < 3; j++){
-        const byteIndex = index[j] / 8;
-        const bitIndex = index[j] % 8;
-        b[byteIndex] = (1 << uint(bitIndex))
-      }
-      return b;
-    }
-    
-    const topicsToBloom = (topics) => {
-      let i = new Big("0");
-      for(let idx = 0; idx < topics.length; idx++){
-        const bloom = topicToBloom(topics[idx]);
-        // TODO: set i equals to i | bloom
-      }
-      
-      let combined = Buffer.alloc(BloomFilterSize, 0);
-      const data = Uint64BE(i).toBuffer();
-      combined = Buffer.concat([data, combined.slice(BloomFilterSize - data.length)]);
-      return combined;
-    }
 
     const makePayload = (message) => {
-      return rlp.encode([message.from, message.to, createBloomFilter(message), message.limit, null, true]);
+      // , message.limit, null, true
+      return rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
     }
 
-    this.provider.events.on("requestMessages", (minPow, obj, cb) => {
-      const peerId = Buffer.from(obj.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
-      const peer = this.node.rlpx.getPeers().find(x => x._remoteId.equals(peerId));
+    this.provider.events.on("requestMessages", (minPow, message, cb) => {
+      const peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
       const now = parseInt((new Date()).getTime() / 1000, 10);
+      
+      if(message.to == 0) message.to = now;
+      if(message.from == 0)  message.from = now - 86400; // -24hr
+      if(message.timeout == 0) message.timeout = 30;
+      
+      let publicKey = null;
 
-      const payload = makePayload(obj);
+      const payload = makePayload(message);
 
-      const envelope;
-      /*
-      const envelope = makeEnvelop(
-        payload,
-        symKey, // Get symkey
-        publicKey, // Transalte node to pubkey
-        NODEID,
-        minPow,
-        now
-      );
-      */
+      if(!message.symKeyID){
+        publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
+      }
+    
+      const envelope = {
+        symKeyID: message.symKeyID,
+        pubKey: publicKey,
+        sig: this.node.privateKey,
+        topic: message.topics[0], // TODO: must handle multiple topics
+        powTime: 5, //  TODO:
+        powTarget: minPow,
+        payload: payload,
+        targetPeer: peerId
+      };
 
-
-
-      peer._sendMessage(envelope);
+      this.provider.events.emit('post', envelope);
 
       cb(null, true);
     });
@@ -368,12 +345,19 @@ class Manager {
 
     let [expiry, ttl, topic, data, nonce] = message;
 
+    let calculatedPow;
+    if(!isNaN(expiry) && ttl !== undefined){
+      ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
+      const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
+    } else {
+      // TODO:  determine these values when the message comes from a mailserver
+      ttl = 0;
+      calculatedPow = 0;
+    }
+
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
-    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
-
-    const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
-
+    
     let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
     if (!topicSubscriptions) {
       return;
