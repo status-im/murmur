@@ -49,7 +49,6 @@ class Manager {
       
       const expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
 
-
       if(!!sig){
         if(Buffer.isBuffer(sig)){
           options.from = { privKey: "0x" + sig.toString('hex') };
@@ -90,6 +89,7 @@ class Manager {
       const dispatchEnvelope = (err, encryptedMessage) => {
         if(err){
           // TODO print error encrypting msg
+          console.log(err);
           return;
         }
 
@@ -115,17 +115,13 @@ class Manager {
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
-        this.sendEnvelopeToSubscribers(msgEnv);
-
-        const out = [msgEnv];
-
-        const p = rlp.encode(out);
-
+        const p = rlp.encode(msgEnv);
+        
         if(targetPeer){
-          const peer = this.node.rlpx.getPeers().find(x => x._remoteId.equals(peerId));
-          peer._sendMessage(p);
+          this.node.rawBroadcast(p, targetPeer.toString('hex'), 126);
         } else {
           this.node.rawBroadcast(p);
+          this.sendEnvelopeToSubscribers(msgEnv);
         }
       }
 
@@ -181,7 +177,7 @@ class Manager {
     }
 
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
-      const peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
+      let peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
       const now = parseInt((new Date()).getTime() / 1000, 10);
       
       if(message.to == 0) message.to = now;
@@ -200,8 +196,9 @@ class Manager {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
         sig: this.node.privateKey,
-        topic: message.topics[0], // TODO: must handle multiple topics
-        powTime: 5, //  TODO:
+        ttl: 50,
+        topic: "0x00000000",
+        powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
         powTarget: minPow,
         payload: payload,
         targetPeer: peerId
@@ -345,19 +342,12 @@ class Manager {
 
     let [expiry, ttl, topic, data, nonce] = message;
 
-    let calculatedPow;
-    if(!isNaN(expiry) && ttl !== undefined){
-      ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
-      const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
-    } else {
-      // TODO:  determine these values when the message comes from a mailserver
-      ttl = 0;
-      calculatedPow = 0;
-    }
-
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
-    
+
+    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
+    const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
+
     let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
     if (!topicSubscriptions) {
       return;

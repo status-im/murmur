@@ -44,14 +44,18 @@ class Ethereum {
       }
   }
 
-  rawBroadcast( msg) {
-    for (let peerId of Object.keys(this.peers)) {
+  rawBroadcast(msg, peerId, code = 1) {
+    if(peerId){
       let peer = this.peers[peerId];
-
-       peer.shh.sendRawMessage(1, msg)
+      peer.shh.sendRawMessage(code, msg);
+    } else {
+      for (let peerId of Object.keys(this.peers)) {
+        let peer = this.peers[peerId];
+        peer.shh.sendRawMessage(code, msg)
       }
+    }
   }
-
+  
   _startDPT() {
     this.dpt = new devp2p.DPT(this.privateKey, {
       refreshInterval: 30000,
@@ -84,7 +88,8 @@ class Ethereum {
       //  devp2p.ETH.eth63,
       //  devp2p.ETH.eth62,
       //  devp2p.LES.les2,
-        { name: 'shh', version: 6, length: 17, constructor: SHH }
+        { name: 'shh', version: 6, length: 300, constructor: SHH },
+
       ],
       listenPort: null
     })

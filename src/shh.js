@@ -11,10 +11,9 @@ class SHH {
     this.events = new Events();
   }
 
-  _handleMessage (code, data) {
- //   console.dir("----- whisper handleMessage")
-   // console.dir(code)
-
+  _handleMessage (code, data) { 
+    // console.dir("----- whisper handleMessage")
+    // console.dir(code)    
     if (code === 0) {
       const payload = rlp.decode(data)
      // console.dir("whisper status")
@@ -22,14 +21,14 @@ class SHH {
      // console.dir("something: " + payload[1].toString('hex'))
       this.sendMessage(code, payload)
     }
-    if (code === 1) {
+    if (code === 1 || code === 127) { // TODO: extract to constant. 127 is p2p message
       const payload = rlp.decode(data)
-    //  console.dir("whisper received message")
-   //   console.dir("contains " + payload.length + " envelopes")
+      // console.dir("whisper received message")
+      // console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
-               
+      
 /*
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
