@@ -10,7 +10,7 @@
     "elliptic": "^6.4.1",
     "eth-lib": "^0.2.8",
     "ethereum-common": "^0.2.1",
-    "ethereumjs-devp2p": "^2.5.0",
+    "ethereumjs-devp2p": "status-im/ethereumjs-devp2p#mailserver-experiment",
     "express": "^4.16.4",
     "express-ws": "^4.0.0",
     "int64-buffer": "^0.99.1007",
