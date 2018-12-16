@@ -55,7 +55,7 @@ const addPayloadSizeField = (msg, payload) => {
 
 const getSizeOfPayloadSizeField = (payload) => {
 	let s = 1;
-	for(i = payload.length; i>= 256; i /= 256) {
+	for(let i = payload.length; i>= 256; i /= 256) {
 		s++
 	}
 	return s;

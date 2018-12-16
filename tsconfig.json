@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "lib": ["es2017", "dom"],
+    "moduleResolution": "node",
+    "noEmit": true,
+    "strict": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "esModuleInterop": true,
+    "typeRoots": ["node_modules/@types"],
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["./typings/*"]
+    }
+  },
+  "include": ["./src/**/*"]
+}
