@@ -169,13 +169,6 @@ class Manager {
       });
     });
 
-
-
-    const makePayload = (message) => {
-      // , message.limit, null, true
-      return rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
-    }
-
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
       let peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
       const now = parseInt((new Date()).getTime() / 1000, 10);
@@ -186,7 +179,7 @@ class Manager {
       
       let publicKey = null;
 
-      const payload = makePayload(message);
+      const payload = rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
 
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);

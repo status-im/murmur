@@ -29,6 +29,10 @@ class SHH {
       payload.forEach((envelope) => {
         let [expiry, ttl, topic, data, nonce] = envelope;
       
+
+        // TODO: determine if message is old
+        // TODO: if message is old, check if sender is in trusted peers
+
 /*
         console.dir("--------------------")
         console.dir("expiry: " + devp2p._util.buffer2int(expiry))
