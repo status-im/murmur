@@ -115,8 +115,8 @@ class Manager {
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
-        const p = rlp.encode(msgEnv);
-        
+        const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
+
         if(targetPeer){
           this.node.rawBroadcast(p, targetPeer.toString('hex'), 126);
         } else {
@@ -232,7 +232,7 @@ class Manager {
 
       cb(null, id);
     });
-    
+
     this.provider.events.on("getPublicKey", (id, cb) => {
       const key = this.keys[id];
       if (!key || !key.pubKey) { return cb("key not found"); }
@@ -329,7 +329,7 @@ class Manager {
       deleteKey(id, cb);
     });
   }
-  
+
   sendEnvelopeToSubscribers(message) {
     console.dir('received message, sending to subscribers...');
 
@@ -337,7 +337,7 @@ class Manager {
 
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
-
+    
     ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
     const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
 
