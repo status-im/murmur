@@ -8,6 +8,7 @@ const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
+const bloom = require('./bloom');
 
 class Manager {
 
@@ -48,12 +49,15 @@ class Manager {
       
       const expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
 
-
       if(!!sig){
-        options.from = this.keys[sig];
-        if(!options.from || !options.from.privKey){
-          // TODO: trigger error No identity found
-          console.log("No identity found");
+        if(Buffer.isBuffer(sig)){
+          options.from = { privKey: "0x" + sig.toString('hex') };
+        } else {
+          options.from = this.keys[sig];
+          if(!options.from || !options.from.privKey){
+            // TODO: trigger error No identity found
+            console.log("No identity found");
+          }
         }
       }
 
@@ -85,6 +89,7 @@ class Manager {
       const dispatchEnvelope = (err, encryptedMessage) => {
         if(err){
           // TODO print error encrypting msg
+          console.log(err);
           return;
         }
 
@@ -110,13 +115,14 @@ class Manager {
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
-        this.sendEnvelopeToSubscribers(msgEnv);
-
-        const out = [msgEnv];
-
-        const p = rlp.encode(out);
-
-        this.node.rawBroadcast(p);
+        const p = rlp.encode(msgEnv);
+        
+        if(targetPeer){
+          this.node.rawBroadcast(p, targetPeer.toString('hex'), 126);
+        } else {
+          this.node.rawBroadcast(p);
+          this.sendEnvelopeToSubscribers(msgEnv);
+        }
       }
 
       if(options.symKey){
@@ -143,6 +149,57 @@ class Manager {
       }
 
       cb(null, id);
+    });
+
+
+    this.provider.events.on("addPeer", (url, cb) => {
+      const urlParts = url.split("@");
+      const ipInfo = urlParts[1].split(":");
+    
+      const id = Buffer.from(urlParts[0].replace("enode://", ""), "hex");
+      const address = ipInfo[0];
+      const port = ipInfo[1];
+    
+      this.node.addStaticPeer({ id, address, port }, (err, data) => {
+        if(err){
+          cb(err);
+        } else {
+          cb(null, data);
+        }
+      });
+    });
+
+    this.provider.events.on("requestMessages", (minPow, message, cb) => {
+      let peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
+      const now = parseInt((new Date()).getTime() / 1000, 10);
+      
+      if(message.to == 0) message.to = now;
+      if(message.from == 0)  message.from = now - 86400; // -24hr
+      if(message.timeout == 0) message.timeout = 30;
+      
+      let publicKey = null;
+
+      const payload = rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
+
+      if(!message.symKeyID){
+        publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
+      }
+    
+      const envelope = {
+        symKeyID: message.symKeyID,
+        pubKey: publicKey,
+        sig: this.node.privateKey,
+        ttl: 50,
+        topic: "0x00000000",
+        powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
+        powTarget: minPow,
+        payload: payload,
+        targetPeer: peerId
+      };
+
+      this.provider.events.emit('post', envelope);
+
+      cb(null, true);
     });
 
     this.provider.events.on("newKeyPair", (cb) => {
@@ -175,7 +232,7 @@ class Manager {
 
       cb(null, id);
     });
-
+    
     this.provider.events.on("getPublicKey", (id, cb) => {
       const key = this.keys[id];
       if (!key || !key.pubKey) { return cb("key not found"); }
@@ -272,7 +329,7 @@ class Manager {
       deleteKey(id, cb);
     });
   }
-
+  
   sendEnvelopeToSubscribers(message) {
     console.dir('received message, sending to subscribers...');
 
@@ -280,8 +337,8 @@ class Manager {
 
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
-    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
 
+    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
     const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
 
     let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
