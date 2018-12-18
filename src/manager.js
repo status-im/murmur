@@ -1,6 +1,6 @@
-const { randomBytes, pbkdf2 } = require('crypto')
-const secp256k1 = require('secp256k1')
-const messages = require('./messages.js')
+const { randomBytes, pbkdf2 } = require('crypto');
+const secp256k1 = require('secp256k1');
+const messages = require('./messages.js');
 const {keccak256} = require("eth-lib/lib/hash");
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
@@ -41,7 +41,7 @@ class Manager {
       
       topic = Buffer.from(stripHexPrefix(topic), 'hex');
 
-      if(ttl == 0){
+      if(ttl === 0){
         ttl = 50; // Default TTL
       }
 
@@ -68,7 +68,7 @@ class Manager {
           console.log("Topic is required");
         } else {
           if(topic.length > 4){
-            console.log("Topic length is incorrect")
+            console.log("Topic length is incorrect");
           }
         }
 
@@ -82,8 +82,7 @@ class Manager {
       }
 
       let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {
-        if(err)
-          console.log(err)
+        if(err) console.log(err);
       });
 
       const dispatchEnvelope = (err, encryptedMessage) => {
@@ -99,7 +98,7 @@ class Manager {
         let non0 = false;
         let val = [];
         for(let i = 0; i < nonceBuffer.length; i++){
-          if(nonceBuffer[i] != 0){
+          if(nonceBuffer[i] !== 0){
             non0 = true;
           }
           if(non0){
@@ -111,7 +110,7 @@ class Manager {
         const msgEnv = [];
         msgEnv.push(powResult.expiry);
         msgEnv.push(ttl);
-        msgEnv.push(topic)
+        msgEnv.push(topic);
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
@@ -123,7 +122,7 @@ class Manager {
           this.node.rawBroadcast(p);
           this.sendEnvelopeToSubscribers(msgEnv);
         }
-      }
+      };
 
       if(options.symKey){
         messages.encryptSymmetric(topic, envelope, options, dispatchEnvelope);
@@ -137,15 +136,15 @@ class Manager {
       const { minPow, symKeyID, privateKeyID, topics, allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
       for (let topic of topics) {
-        console.dir("==> topic")
-        console.dir(topic.toString('hex'))
+        console.dir("==> topic");
+        console.dir(topic.toString('hex'));
         if (!this.subscriptions[topic]) {
-          this.subscriptions[topic] = {}
+          this.subscriptions[topic] = {};
         }
         this.subscriptions[topic][id] = {
           privateKeyID,
           symKeyID
-        }
+        };
       }
 
       cb(null, id);
@@ -173,9 +172,9 @@ class Manager {
       let peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
       const now = parseInt((new Date()).getTime() / 1000, 10);
       
-      if(message.to == 0) message.to = now;
-      if(message.from == 0)  message.from = now - 86400; // -24hr
-      if(message.timeout == 0) message.timeout = 30;
+      if(!message.to) message.to = now;
+      if(!message.from)  message.from = now - 86400; // -24hr
+      if(!message.timeout) message.timeout = 30;
       
       let publicKey = null;
 
@@ -253,7 +252,7 @@ class Manager {
     });
 
     const deleteKey = (id, cb) => {
-      if(id.length / 2 != constants.keyIdLength){
+      if(id.length / 2 !== constants.keyIdLength){
         const errMsg = "invalid id";
         return cb(errMsg);
       }
@@ -264,7 +263,7 @@ class Manager {
       } else {
         cb(null, false);
       }
-    }
+    };
 
     this.provider.events.on("deleteKeyPair", (id, cb) => {
       deleteKey(id, cb);
@@ -275,7 +274,7 @@ class Manager {
 
       if(this.keys[id]) return cb("key is not unique");
 
-      if(stripHexPrefix(symmetricKey).length / 2 != constants.symKeyLength){
+      if(stripHexPrefix(symmetricKey).length / 2 !== constants.symKeyLength){
         return cb("wrong key size");
       }
 
@@ -309,7 +308,7 @@ class Manager {
 
         this.keys[id] = {symmetricKey: "0x" + derivedKey.toString('hex')};
 
-        cb (null, id);
+        cb(null, id);
       });
     });
 
@@ -338,7 +337,7 @@ class Manager {
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
     
-    ttl = (typeof ttl == 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
+    ttl = (typeof ttl === 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
     const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
 
     let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
@@ -375,9 +374,8 @@ class Manager {
               hash: id
             }
           }
-        })
-        //this.provider.
-      }
+        });
+      };
 
       console.dir(">>>>> subscription");
       let keyId = topicSubscriptions[subscriptionId].symKeyID;
@@ -398,7 +396,7 @@ class Manager {
   listenToNodeEvents() {
     this.node.events.on('shh_message', (message) => {
       this.sendEnvelopeToSubscribers(message);
-    })
+    });
   }
 
 }
