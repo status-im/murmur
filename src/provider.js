@@ -56,11 +56,6 @@ class Provider {
     cb(null, true);
   }
 
-  shh_markTrustedPeer(payload, cb) {
-    throw new Error("shh_markTrustedPeer not implemented yet");
-    cb(null, false);
-  }
-
   shh_newKeyPair(payload, cb) {
     this.events.emit('newKeyPair', cb);
   }
@@ -181,7 +176,7 @@ class Provider {
   }
 
   shh_markTrustedPeer(payload, cb){
-    // TODO: implement this
+    this.events.emit('markTrustedPeer', payload.params[0]);
     cb(null, true);
   }
 

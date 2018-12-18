@@ -1,6 +1,6 @@
 const rlp = require('rlp-encoding');
 const Events = require('events');
-const messages = require('./messages.js');
+const constants = require('./constants');
 
 
 class SHH {
@@ -15,50 +15,32 @@ class SHH {
     // console.dir("----- whisper handleMessage")
     // console.dir(code)    
     if (code === 0) {
-      const payload = rlp.decode(data)
+      const payload = rlp.decode(data);
      // console.dir("whisper status")
       //console.dir("version: " + payload[0].toString('hex'))
      // console.dir("something: " + payload[1].toString('hex'))
-      this.sendMessage(code, payload)
+      this.sendMessage(code, payload);
     }
-    if (code === 1 || code === 127) { // TODO: extract to constant. 127 is p2p message
-      const payload = rlp.decode(data)
+
+    if (code === constants.message || code === constants.p2pMessage) {
+      const payload = rlp.decode(data);
       // console.dir("whisper received message")
       // console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
-        let [expiry, ttl, topic, data, nonce] = envelope;
-      
-
-        // TODO: determine if message is old
-        // TODO: if message is old, check if sender is in trusted peers
-
-/*
-        console.dir("--------------------")
-        console.dir("expiry: " + devp2p._util.buffer2int(expiry))
-        console.dir("ttl: " + devp2p._util.buffer2int(ttl))
-        console.dir("topic: " + topic.toString('hex'))
-        console.dir("data (size): " + data.length)
-        console.dir("nonce: " + devp2p._util.buffer2int(nonce))
-*/
-      
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
-        this.events.emit('message', envelope)
-      })
+        const peer = "enode://" + this.peer._remoteId.toString('hex') + "@" + this.peer._socket._peername.address + ":" + this.peer._socket._peername.port;
+        this.events.emit('message', envelope, peer);
+      });
     }
   }
 
-  isTooOld(ttl) {
-    // TODO:
-    return false;
-  }
-
   sendMessage (code, payload) {
-    this.send(code, rlp.encode(payload))
+    this.send(code, rlp.encode(payload));
   }
 
   sendRawMessage(code, payload) {
-    this.send(code, payload)
+    this.send(code, payload);
   }
 
 }
