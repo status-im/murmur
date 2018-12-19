@@ -1,11 +1,11 @@
-const devp2p = require('ethereumjs-devp2p')
-const LRUCache = require('lru-cache')
-const ms = require('ms')
-const chalk = require('chalk')
-const assert = require('assert')
-const rlp = require('rlp-encoding')
-const Buffer = require('safe-buffer').Buffer
-const SHH = require('./shh.js')
+const devp2p = require('ethereumjs-devp2p');
+// const LRUCache = require('lru-cache');
+const ms = require('ms');
+const chalk = require('chalk');
+const assert = require('assert');
+// const rlp = require('rlp-encoding');
+// const Buffer = require('safe-buffer').Buffer;
+const SHH = require('./shh.js');
 const Events = require('events');
 const {keccak256} = require("eth-lib/lib/hash");
 
@@ -19,20 +19,20 @@ class Ethereum {
     this.bootnodes = options.bootnodes || [];
     this.staticnodes = options.staticnodes || [];
     this.events = new Events();
-    this.messagesTracker = {}
-    this.peers = {}
+    this.messagesTracker = {};
+    this.peers = {};
   }
 
   start(ip, port) {
-    this._startDPT()
-    this._startRLPX()
+    this._startDPT();
+    this._startRLPX();
 
     if (ip) {
-      this.rlpx.listen(port, ip)
-      this.dpt.bind(port, ip)
+      this.rlpx.listen(port, ip);
+      this.dpt.bind(port, ip);
     }
 
-    this.addBootnodes(this.bootnodes)
+    this.addBootnodes(this.bootnodes);
   }
 
   broadcast(msgType, msg) {
@@ -40,42 +40,42 @@ class Ethereum {
 
     for (let peerId of Object.keys(this.peers)) {
       let peer = this.peers[peerId];
-       peer.shh.sendMessage(1, msg)
-      }
+       peer.shh.sendMessage(1, msg);
+    }
   }
 
   rawBroadcast(msg, peerId, code = 1) {
-    if(peerId){
+    if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
-        peer.shh.sendRawMessage(code, msg)
+        peer.shh.sendRawMessage(code, msg);
       }
     }
   }
-  
+
   _startDPT() {
     this.dpt = new devp2p.DPT(this.privateKey, {
       refreshInterval: 30000,
       endpoint: { address: '0.0.0.0', udpPort: null, tcpPort: null }
-    })
+    });
 
-    this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)))
+    this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)));
   }
 
-  addStaticPeer(node, cb){
+  addStaticPeer(node, cb) {
     this.staticnodes.push(node);
     this.rlpx.connect({id: node.id, address: node.address, port: node.port})
-      .then(res => {
+      .then(_res => {
         cb(null, true);
       })
       .catch(err => {
-        if(err.message.indexOf("Already connected") > -1){
+        if (err.message.indexOf("Already connected") > -1){
           cb(null, true);
         } else {
-          cb(err)
+          cb(err);
         }
       });
   }
@@ -92,24 +92,24 @@ class Ethereum {
 
       ],
       listenPort: null
-    })
+    });
 
     this.staticnodes.map(node => {
       this.rlpx.connect({id: node.id, address: node.address, port: node.port});
     });
 
-    this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)))
+    this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)));
 
     this.rlpx.on('peer:added', (peer) => {
-      const shh = peer.getProtocols()[0]
+      const shh = peer.getProtocols()[0];
 
       let peerId = peer._hello.id.toString('hex');
 
-      this.peers[peerId] = { peer, shh }
+      this.peers[peerId] = { peer, shh };
       console.dir(Object.keys(this.peers));
 
       shh.events.on('message', (message) => {
-        let [expiry, ttl, topic, data, nonce] = message;
+        let [_expiry, ttl, _topic, _data, _nonce] = message;
         let id = keccak256(message.join(''));
 
         if (this.messagesTracker[id]) {
@@ -121,55 +121,56 @@ class Ethereum {
         this.events.emit('shh_message', message);
       });
 
-      const clientId = peer.getHelloMessage().clientId
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
-
-    })
+      const clientId = peer.getHelloMessage().clientId;
+      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`));
+    });
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
       const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
-      if(staticNode){
+      if (staticNode){
         // Reconnect
         this.rlpx.connect({id: staticNode.id, address: staticNode.address, port: staticNode.port});
       }
 
-      const who = disconnectWe ? 'we disconnect' : 'peer disconnect'
-      const total = this.rlpx.getPeers().length
-      console.log(chalk.yellow(`Remove peer: ${getPeerAddr(peer)} - ${who}, reason: ${peer.getDisconnectPrefix(reasonCode)} (${String(reasonCode)}) (total: ${total})`))
-    })
+      const who = disconnectWe ? 'we disconnect' : 'peer disconnect';
+      const total = this.rlpx.getPeers().length;
+      console.log(chalk.yellow(`Remove peer: ${getPeerAddr(peer)} - ${who}, reason: ${peer.getDisconnectPrefix(reasonCode)} (${String(reasonCode)}) (total: ${total})`));
+    });
 
     this.rlpx.on('peer:error', (peer, err) => {
-      if (err.code === 'ECONNRESET') return
-
-      if (err instanceof assert.AssertionError) {
-        const peerId = peer.getId()
-        if (peerId !== null) this.dpt.banPeer(peerId, ms('5m'))
-
-        console.error(chalk.red(`Peer error (${getPeerAddr(peer)}): ${err.message}`))
-        return
+      if (err.code === 'ECONNRESET') {
+        return;
       }
 
-      console.error(chalk.red(`Peer error (${getPeerAddr(peer)}): ${err.stack || err}`))
-    })
+      if (err instanceof assert.AssertionError) {
+        const peerId = peer.getId();
+        if (peerId !== null) this.dpt.banPeer(peerId, ms('5m'));
+
+        console.error(chalk.red(`Peer error (${getPeerAddr(peer)}): ${err.message}`));
+        return;
+      }
+
+      console.error(chalk.red(`Peer error (${getPeerAddr(peer)}): ${err.stack || err}`));
+    });
   }
 
   addBootnodes(bootnodes) {
-    this.bootnodes.forEach((bootnode) => {
+    bootnodes.forEach((bootnode) => {
       this.dpt.bootstrap(bootnode).catch((err) => {
-        console.error(chalk.bold.red(`DPT bootstrap error: ${err.stack || err}`))
-      })
-    })
+        console.error(chalk.bold.red(`DPT bootstrap error: ${err.stack || err}`));
+      });
+    });
   }
 
   connectTo(node) {
     this.dpt.addPeer(node).then((peer) => {
-      console.dir("==> peer added")
+      console.dir("==> peer added");
       return this.rlpx.connect({
         id: peer.id,
         address: peer.address,
         port: peer.tcpPort
-      })
-    }).catch((err) => console.log(`error on connection to local node: ${err.stack || err}`))
+      });
+    }).catch((err) => console.log(`error on connection to local node: ${err.stack || err}`));
   }
 
 }

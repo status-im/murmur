@@ -1,7 +1,5 @@
 const rlp = require('rlp-encoding');
 const Events = require('events');
-const messages = require('./messages.js');
-
 
 class SHH {
   constructor(version, peer, send) {
@@ -11,24 +9,23 @@ class SHH {
     this.events = new Events();
   }
 
-  _handleMessage (code, data) { 
+  _handleMessage (code, data) {
     // console.dir("----- whisper handleMessage")
-    // console.dir(code)    
+    // console.dir(code)
     if (code === 0) {
-      const payload = rlp.decode(data)
+      const payload = rlp.decode(data);
      // console.dir("whisper status")
       //console.dir("version: " + payload[0].toString('hex'))
      // console.dir("something: " + payload[1].toString('hex'))
-      this.sendMessage(code, payload)
+      this.sendMessage(code, payload);
     }
     if (code === 1 || code === 127) { // TODO: extract to constant. 127 is p2p message
-      const payload = rlp.decode(data)
+      const payload = rlp.decode(data);
       // console.dir("whisper received message")
       // console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
-        let [expiry, ttl, topic, data, nonce] = envelope;
-      
+        //let [expiry, ttl, topic, data, nonce] = envelope;
 
         // TODO: determine if message is old
         // TODO: if message is old, check if sender is in trusted peers
@@ -41,24 +38,24 @@ class SHH {
         console.dir("data (size): " + data.length)
         console.dir("nonce: " + devp2p._util.buffer2int(nonce))
 */
-      
+
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
-        this.events.emit('message', envelope)
-      })
+        this.events.emit('message', envelope);
+      });
     }
   }
 
-  isTooOld(ttl) {
+  isTooOld(_ttl) {
     // TODO:
     return false;
   }
 
   sendMessage (code, payload) {
-    this.send(code, rlp.encode(payload))
+    this.send(code, rlp.encode(payload));
   }
 
   sendRawMessage(code, payload) {
-    this.send(code, payload)
+    this.send(code, payload);
   }
 
 }
