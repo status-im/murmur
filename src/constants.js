@@ -7,4 +7,4 @@ module.exports = {
     symKeyLength: 32, // bytes,
     keyIdLength: 32,
     privKeyLength: 32
-}
+};

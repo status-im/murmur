@@ -1,14 +1,13 @@
 const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
-const constants = require('./constants');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
 
 function hexStringToDecString(s) {
-    function add(x, y) {
+    function add(_x, _y) {
         var c = 0, r = [];
-        var x = x.split('').map(Number);
-        var y = y.split('').map(Number);
+        var x = _x.split('').map(Number);
+        var y = _y.split('').map(Number);
         while(x.length || y.length) {
             var s = (x.pop() || 0) + (y.pop() || 0) + c;
             r.unshift(s < 10 ? s : s - 10);
@@ -43,23 +42,21 @@ function hexStringToDecString(s) {
 
   // Determine the index of the first bit set (BE)
   const firstBitSet = (v) => {
-      let byteindex = 0
+      let byteindex = 0;
       for(let i = v.length - 1; i >= 0; i--){
           const byte = v[i];
-          if((byte & BYTE1) == 1) return byteindex + 0;
-          if((byte & BYTE2) == 2) return byteindex + 1;
-          if((byte & BYTE3) == 4) return byteindex + 2;
-          if((byte & BYTE4) == 8) return byteindex + 3;
-          if((byte & BYTE5) == 16) return byteindex + 4;
-          if((byte & BYTE6) == 32) return byteindex + 5;
-          if((byte & BYTE7) == 64) return byteindex + 6;
-          if((byte & BYTE8) == 128) return byteindex + 7;
+          if((byte & BYTE1) === 1) return byteindex + 0;
+          if((byte & BYTE2) === 2) return byteindex + 1;
+          if((byte & BYTE3) === 4) return byteindex + 2;
+          if((byte & BYTE4) === 8) return byteindex + 3;
+          if((byte & BYTE5) === 16) return byteindex + 4;
+          if((byte & BYTE6) === 32) return byteindex + 5;
+          if((byte & BYTE7) === 64) return byteindex + 6;
+          if((byte & BYTE8) === 128) return byteindex + 7;
 
           byteindex += 8;
       }
-  }
-
-
+  };
 
   const powToFirstBit = (pow, data, ttl) => {
     const size = 20 + data.length;
@@ -68,8 +65,7 @@ function hexStringToDecString(s) {
       return 1;
     }
     return res;
-  }
-
+  };
 
   const NS_PER_SEC = 1e9;
 
@@ -77,7 +73,7 @@ function hexStringToDecString(s) {
   const getTime = () => {
     const t = process.hrtime();
     return t[0] * NS_PER_SEC + t[1];
-  }
+  };
 
 
   // Given a Expiry, TTL, Topic, Nonce and Data Buffer
@@ -86,32 +82,32 @@ function hexStringToDecString(s) {
   const calculatePoW = (Expiry, TTL, Topic, Data, Nonce) => {
     let buf = Buffer.alloc(32, 0);
     const h = Buffer.from(keccak256(rlp.encode([Expiry, TTL, Topic, Data])), 'hex');
-    
+
     buf = Buffer.concat([h, buf]);
     buf = Buffer.concat([buf.slice(0, buf.length - 8), Nonce]);
-    
+
     const d = Buffer.from(keccak256(buf));
     const size = 20 + Data.length;
 
     const firstBit = firstBitSet(d);
 
     let x = (new Big(2)).pow(firstBit);
-    x = x.div(new Big(size))
+    x = x.div(new Big(size));
     x = x.div(new Big(TTL));
 
-    return x.toString()
-  }
+    return x.toString();
+  };
 
 
   function ProofOfWork(powTarget, powTime, ttl, topic, data, expiry){
-    if(powTarget === 0){
+    if (powTarget === 0){
       // TODO: Pow is not required
       return {};
     }
 
     let target;
 
-    if(powTarget === undefined){
+    if (powTarget === undefined){
       expiry += powTime;
     } else {
       target = powToFirstBit(powTarget, data, ttl);
@@ -123,23 +119,23 @@ function hexStringToDecString(s) {
     buf = Buffer.concat([h, buf]);
 
     let bestBit = -1;
-    let firstBit;
-  
-    let resNonce; 
-    
+    // let firstBit;
+
+    let resNonce;
+
     const finish = getTime() + powTime * 2 * NS_PER_SEC;
-    
-    outerLoop: 
-    for(let nonce = Big(0); getTime() < finish; ){
-      for(let i = 0; i < 1024; i++){
+
+    outerLoop:
+    for (let nonce = Big(0); getTime() < finish;){
+      for (let i = 0; i < 1024; i++){
         buf = Buffer.concat([buf.slice(0, buf.length - 8), (new Uint64BE(nonce.toString(), 16)).toBuffer()]);
-        
+
         const d = Buffer.from(keccak256(buf));
         const firstBit = firstBitSet(d);
-        if(firstBit > bestBit){
+        if (firstBit > bestBit){
           resNonce = nonce;
           bestBit = firstBit;
-          if(target > 0 && bestBit >= target){
+          if (target > 0 && bestBit >= target){
             break outerLoop;
           }
         }
@@ -162,4 +158,4 @@ function hexStringToDecString(s) {
     firstBitSet,
     calculatePoW,
     ProofOfWork
-  }
+  };

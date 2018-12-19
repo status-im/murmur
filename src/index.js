@@ -1,6 +1,6 @@
 const Provider = require('./provider');
-const node = require('./client.js')
-const Manager = require('./manager')
+const node = require('./client.js');
+const Manager = require('./manager');
 
 class Murmur {
   constructor() {
@@ -9,8 +9,8 @@ class Murmur {
   }
 
   start() {
-    node.start()
-    node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303})
+    node.start();
+    node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
   }
 
   // provider() {

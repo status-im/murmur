@@ -1,7 +1,7 @@
 {
   "name": "murmur-client",
-  "version": "0.1.1",
-  "main": "src/index.js",
+  "version": "0.1.2",
+  "main": "./dist/index.js",
   "scripts": {
     "babel": "babel",
     "babel:node": "npm-run-all babel:node:*",
@@ -57,6 +57,7 @@
     "babel-plugin-transform-react-remove-prop-types": "^0.4.20",
     "cross-env": "^5.2.0",
     "eslint": "^5.9.0",
+    "mocha": "^5.2.0",
     "npm-run-all": "^4.1.5",
     "rimraf": "^2.6.2",
     "tape-async": "^2.3.0",
@@ -81,6 +82,7 @@
     "rlp-encoding": "^3.0.0",
     "safe-buffer": "^5.1.2",
     "secp256k1": "^3.5.2",
+    "source-map-support": "^0.5.9",
     "strip-hex-prefix": "^1.0.0"
   },
   "author": "iuri.matias@gmail.com",
