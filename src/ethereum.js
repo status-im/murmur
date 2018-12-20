@@ -18,6 +18,7 @@ class Ethereum {
     this.privateKey = options.privateKey;
     this.bootnodes = options.bootnodes || [];
     this.staticnodes = options.staticnodes || [];
+    this.trustedPeers = [];
     this.events = new Events();
     this.messagesTracker = {};
     this.peers = {};
@@ -40,7 +41,7 @@ class Ethereum {
 
     for (let peerId of Object.keys(this.peers)) {
       let peer = this.peers[peerId];
-       peer.shh.sendMessage(1, msg);
+      peer.shh.sendMessage(1, msg);
     }
   }
 
@@ -65,7 +66,11 @@ class Ethereum {
     this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)));
   }
 
-  addStaticPeer(node, cb) {
+  addTrustedPeer(node){
+    this.trustedPeers.push(node);
+  }
+
+  addStaticPeer(node, cb){
     this.staticnodes.push(node);
     this.rlpx.connect({id: node.id, address: node.address, port: node.port})
       .then(_res => {
@@ -78,6 +83,11 @@ class Ethereum {
           cb(err);
         }
       });
+  }
+
+  isTooOld(expiry) {
+    const dt = (new Date()).getTime() / 1000;
+    return expiry.readUInt32BE(0) < dt;
   }
 
   _startRLPX() {
@@ -108,12 +118,19 @@ class Ethereum {
       this.peers[peerId] = { peer, shh };
       console.dir(Object.keys(this.peers));
 
-      shh.events.on('message', (message) => {
-        let [_expiry, ttl, _topic, _data, _nonce] = message;
+      shh.events.on('message', (message, peer) => {
+        let [expiry, ttl, topic, data, nonce] = message;
+
         let id = keccak256(message.join(''));
 
         if (this.messagesTracker[id]) {
         //  console.dir("same message: " + id)
+          return;
+        }
+
+        // Verifying if old message is sent by trusted peer
+        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
+          console.log("Discarting old envelope");
           return;
         }
 
@@ -122,8 +139,9 @@ class Ethereum {
       });
 
       const clientId = peer.getHelloMessage().clientId;
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`));
-    });
+      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
+
+    })
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
       const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));

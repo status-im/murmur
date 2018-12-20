@@ -151,6 +151,11 @@ class Manager {
     });
 
 
+    this.provider.events.on("markTrustedPeer", enode => {
+      this.node.addTrustedPeer(enode);
+    });
+
+    
     this.provider.events.on("addPeer", (url, cb) => {
       const urlParts = url.split("@");
       const ipInfo = urlParts[1].split(":");

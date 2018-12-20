@@ -56,11 +56,6 @@ class Provider {
     cb(null, true);
   }
 
-  shh_markTrustedPeer(_payload, _cb) {
-    throw new Error("shh_markTrustedPeer not implemented yet");
-    // cb(null, false);
-  }
-
   shh_newKeyPair(payload, cb) {
     this.events.emit('newKeyPair', cb);
   }
@@ -177,7 +172,12 @@ class Provider {
 
   shh_newMessageFilter(_payload, _cb) {
     throw new Error("shh_newMessageFilter not implemented yet");
-    // cb(null, false);
+    cb(null, false);
+  }
+
+  shh_markTrustedPeer(payload, cb){
+    this.events.emit('markTrustedPeer', payload.params[0]);
+    cb(null, true);
   }
 
   shh_deleteMessageFilter(_payload, _cb) {

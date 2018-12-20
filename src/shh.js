@@ -1,5 +1,7 @@
 const rlp = require('rlp-encoding');
 const Events = require('events');
+const constants = require('./constants');
+
 
 class SHH {
   constructor(version, peer, send) {
@@ -19,35 +21,18 @@ class SHH {
      // console.dir("something: " + payload[1].toString('hex'))
       this.sendMessage(code, payload);
     }
-    if (code === 1 || code === 127) { // TODO: extract to constant. 127 is p2p message
+
+    if (code === constants.message || code === constants.p2pMessage) {
       const payload = rlp.decode(data);
       // console.dir("whisper received message")
       // console.dir("contains " + payload.length + " envelopes")
 
       payload.forEach((envelope) => {
-        //let [expiry, ttl, topic, data, nonce] = envelope;
-
-        // TODO: determine if message is old
-        // TODO: if message is old, check if sender is in trusted peers
-
-/*
-        console.dir("--------------------")
-        console.dir("expiry: " + devp2p._util.buffer2int(expiry))
-        console.dir("ttl: " + devp2p._util.buffer2int(ttl))
-        console.dir("topic: " + topic.toString('hex'))
-        console.dir("data (size): " + data.length)
-        console.dir("nonce: " + devp2p._util.buffer2int(nonce))
-*/
-
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
-        this.events.emit('message', envelope);
+        const peer = "enode://" + this.peer._remoteId.toString('hex') + "@" + this.peer._socket._peername.address + ":" + this.peer._socket._peername.port;
+        this.events.emit('message', envelope, peer);
       });
     }
-  }
-
-  isTooOld(_ttl) {
-    // TODO:
-    return false;
   }
 
   sendMessage (code, payload) {
