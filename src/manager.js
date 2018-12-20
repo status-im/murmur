@@ -60,6 +60,8 @@ class Manager {
         }
       }
 
+      if(pubKey && symKeyID) return cb("Either symKeyID or pubKey should be specified, not both");
+
       // Set symmetric key that is used to encrypt the message
       if(!!symKeyID){
         if(!topic) return cb("Topic is required");        
@@ -67,11 +69,10 @@ class Manager {
         
         options.symKey = this.keys[symKeyID];
         if (!options.symKey || !options.symKey.symmetricKey) return cb("No symmetric key found");
-
-        // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
+        if(!messages.validateDataIntegrity(Buffer.from(stripHexPrefix(options.symKey.symmetricKey), "hex"), constants.symKeyLength)) return cb("Invalid symmetric key");
       } else {
-          // TODO: validate that either pubkey or symkey exists
-          // TODO: check if valid public key
+        if(!pubKey) return cb("Pubkey is required");
+        if(!stripHexPrefix(pubKey).match(/^[0-9A-Fa-f]{130}$/)) return cb("Invalid pubkey");
       }
 
       let  envelope = messages.buildMessage(messagePayload, padding, sig, options, (err) => {

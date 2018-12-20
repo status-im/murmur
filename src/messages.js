@@ -310,5 +310,6 @@ module.exports = {
   encryptAsymmetric,
   hexToBytes,
   buildMessage,
-  parseMessage
+  parseMessage,
+  validateDataIntegrity
 };
