@@ -24,7 +24,7 @@ class Manager {
   }
 
   listenToProviderEvents() {
-    this.provider.events.on('post', (payload) => {
+    this.provider.events.on('post', (payload, cb) => {
       let {
         symKeyID,
         pubKey,
@@ -55,25 +55,18 @@ class Manager {
         } else {
           options.from = this.keys[sig];
           if(!options.from || !options.from.privKey){
-            // TODO: trigger error No identity found
-            console.log("No identity found");
+            return cb("No identity found");
           }
         }
       }
 
       // Set symmetric key that is used to encrypt the message
-      if(!!symKeyID){ // symKeyGiveng
-        if(!topic){
-          // TODO: trigger error:  Topic is required
-          console.log("Topic is required");
-        } else {
-          if(topic.length > 4){
-            console.log("Topic length is incorrect");
-          }
-        }
-
+      if(!!symKeyID){
+        if(!topic) return cb("Topic is required");        
+        if(topic.length > 4) return cb("Topic length is incorrect");
+        
         options.symKey = this.keys[symKeyID];
-        if (!options.symKey || !options.symKey.symmetricKey) console.log("NoSimKeyFound");// TODO trigger error:  No simkey found
+        if (!options.symKey || !options.symKey.symmetricKey) return cb("No symmetric key found");
 
         // TODO: validate data integrity of key, with aesKeyLength to know if symmetric key is valid, and it's different of 0
       } else {
@@ -87,9 +80,8 @@ class Manager {
 
       const dispatchEnvelope = (err, encryptedMessage) => {
         if(err){
-          // TODO print error encrypting msg
-          console.log(err);
-          return;
+          console.error(err);
+          return cb("Error encrypting message");
         }
 
         const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
@@ -201,9 +193,7 @@ class Manager {
         targetPeer: peerId
       };
 
-      this.provider.events.emit('post', envelope);
-
-      cb(null, true);
+      this.provider.events.emit('post', envelope, cb);
     });
 
     this.provider.events.on("newKeyPair", (cb) => {
