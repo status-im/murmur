@@ -11,9 +11,9 @@ class SHH {
     this.events = new Events();
   }
 
-  _handleMessage (code, data) { 
+  _handleMessage (code, data) {
     // console.dir("----- whisper handleMessage")
-    // console.dir(code)    
+    // console.dir(code)
     if (code === 0) {
       const payload = rlp.decode(data);
      // console.dir("whisper status")

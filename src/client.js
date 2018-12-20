@@ -1,17 +1,17 @@
 const Ethereum = require('./ethereum.js');
 const { randomBytes } = require('crypto');
-const staticNodesJson = require('./data/static-nodes.json');
+// const staticNodesJson = require('./data/static-nodes.json');
 
-const CHAIN_ID = 3
+const CHAIN_ID = 3;
 const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
-  return node.chainId === CHAIN_ID
+  return node.chainId === CHAIN_ID;
 }).map((node) => {
   return {
     address: node.ip,
     udpPort: node.port,
     tcpPort: node.port
-  }
-})
+  };
+});
 
 const STATICNODES = require('./data/static-nodes.json').map((node) => {
   const p = node.split("@");
@@ -21,8 +21,8 @@ const STATICNODES = require('./data/static-nodes.json').map((node) => {
   const address = q[0];
   const port = q[1];
 
-  return { id, address, port }
-})
+  return { id, address, port };
+});
 
 const node  = new Ethereum({
   chainId: CHAIN_ID,

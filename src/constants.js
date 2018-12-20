@@ -7,7 +7,6 @@ module.exports = {
     symKeyLength: 32, // bytes,
     keyIdLength: 32,
     privKeyLength: 32,
-
     message: 1,
     p2pMessage: 127
-}
+};

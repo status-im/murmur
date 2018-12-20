@@ -1,4 +1,4 @@
-const Events = require('events')
+const Events = require('events');
 
 class Provider {
 
@@ -20,11 +20,11 @@ class Provider {
     if (method) {
       return method.call(method, payload, (err, result) => {
         if (err) {
-          return callback(err)
+          return callback(err);
         }
         let response = {'id': payload.id, 'jsonrpc': '2.0', 'result': result};
         callback(null, response);
-      })
+      });
     }
     callback(new Error('unknown method ' + payload.method));
   }
@@ -133,7 +133,7 @@ class Provider {
 
     this.events.emit('generateSymKeyFromPassword', payload.params[0], cb);
   }
-   
+
   shh_hasSymKey(payload, cb) {
     if (!payload.params[0]) {
       return cb("key id is required");
@@ -162,15 +162,15 @@ class Provider {
     if (payload.params[0] !== "messages") {
       return cb("unknonw payload type "+ payload.params[0]);
     }
-    this.events.emit('subscribe', payload.params[1], cb)
+    this.events.emit('subscribe', payload.params[1], cb);
   }
 
-  shh_unsubscribe(payload, cb) {
+  shh_unsubscribe(_payload, _cb) {
     throw new Error("shh_unsubscribe not implemented yet");
-    cb(null, false);
+    // cb(null, false);
   }
 
-  shh_newMessageFilter(payload, cb) {
+  shh_newMessageFilter(_payload, _cb) {
     throw new Error("shh_newMessageFilter not implemented yet");
     cb(null, false);
   }
@@ -180,14 +180,14 @@ class Provider {
     cb(null, true);
   }
 
-  shh_deleteMessageFilter(payload, cb) {
+  shh_deleteMessageFilter(_payload, _cb) {
     throw new Error("shh_deleteMessageFilter not implemented yet");
-    cb(null, false);
+    // cb(null, false);
   }
 
-  shh_getFilterMessages(payload, cb) {
+  shh_getFilterMessages(_payload, _cb) {
     throw new Error("shh_getFilterMessages not implemented yet");
-    cb(null, false);
+    // cb(null, false);
   }
 
   shh_post(payload, cb) {
@@ -198,7 +198,7 @@ class Provider {
   on(type, cb) {
     // TODO: support other types later, if relevant
     if (type !== 'data') return;
-    this.notificationCallbacks.push(cb)
+    this.notificationCallbacks.push(cb);
   }
 
   transmit(result) {

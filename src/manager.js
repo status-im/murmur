@@ -36,9 +36,9 @@ class Manager {
         powTarget,
         targetPeer
       } = payload;
-      
+
       let messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
-      
+
       topic = Buffer.from(stripHexPrefix(topic), 'hex');
 
       if(ttl === 0){
@@ -46,7 +46,7 @@ class Manager {
       }
 
       const options = {};
-      
+
       const expiry = Math.floor((new Date()).getTime() / 1000.0) + ttl;
 
       if(!!sig){
@@ -93,7 +93,7 @@ class Manager {
         }
 
         const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
-                
+
         let nonceBuffer =  powResult.nonce;
         let non0 = false;
         let val = [];
@@ -133,7 +133,7 @@ class Manager {
 
     // TODO: this needs to refactored to take into account different clients
     this.provider.events.on('subscribe', (payload, cb) => {
-      const { minPow, symKeyID, privateKeyID, topics, allowP2P } = payload;
+      const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
       for (let topic of topics) {
         console.dir("==> topic");
@@ -159,11 +159,11 @@ class Manager {
     this.provider.events.on("addPeer", (url, cb) => {
       const urlParts = url.split("@");
       const ipInfo = urlParts[1].split(":");
-    
+
       const id = Buffer.from(urlParts[0].replace("enode://", ""), "hex");
       const address = ipInfo[0];
       const port = ipInfo[1];
-    
+
       this.node.addStaticPeer({ id, address, port }, (err, data) => {
         if(err){
           cb(err);
@@ -176,11 +176,11 @@ class Manager {
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
       let peerId = Buffer.from(message.mailserverPeer.split("@")[0].replace('enode://', ''), 'hex');
       const now = parseInt((new Date()).getTime() / 1000, 10);
-      
+
       if(!message.to) message.to = now;
       if(!message.from)  message.from = now - 86400; // -24hr
       if(!message.timeout) message.timeout = 30;
-      
+
       let publicKey = null;
 
       const payload = rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
@@ -188,7 +188,7 @@ class Manager {
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
       }
-    
+
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
@@ -341,7 +341,7 @@ class Manager {
 
     // Preparing data
     nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
-    
+
     ttl = (typeof ttl === 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
     const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
 
