@@ -191,8 +191,7 @@ class Provider {
   }
 
   shh_post(payload, cb) {
-    this.events.emit('post', payload.params[0]);
-    cb(null, true);
+    this.events.emit('post', payload.params[0], cb);
   }
 
   on(type, cb) {

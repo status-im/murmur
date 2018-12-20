@@ -48,10 +48,8 @@ const getSizeOfPayloadSizeField = (payload) => {
 };
 
 const kdf = (hashName, z, s1, kdLen, cb) => {
-  const BlockSize = 64; // TODO: extract to constant
-  // --
-  const reps = ((kdLen + 7) * 8) / (BlockSize * 8);
-  if (reps > Math.pow(2,32) - 1) {
+  const reps = ((kdLen + 7) * 8) / (64 * 8);
+  if (reps > Math.pow(2, 32) - 1) {
     cb("Data too long");
     return;
   }
@@ -243,8 +241,7 @@ const getHash = (plaintextBuffer, isSigned) => {
 
 const ecRecoverPubKey = (messageHash, signature) => {
   const recovery = signature.slice(64).readIntBE(0, 1);
-  // TODO: Buffer constructor is deprecated, see no-buffer-constructor rule on eslint
-  return secp256k1.recover(new Buffer(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false);
+  return secp256k1.recover(Buffer.from(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false);
 };
 
 const validateDataIntegrity = (k, expectedSize) => {
@@ -313,5 +310,6 @@ module.exports = {
   encryptAsymmetric,
   hexToBytes,
   buildMessage,
-  parseMessage
+  parseMessage,
+  validateDataIntegrity
 };
