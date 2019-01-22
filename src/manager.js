@@ -12,8 +12,8 @@ const bloom = require('./bloom');
 
 class Manager {
 
-  constructor(node, provider) {
-    this.node = node;
+  constructor(nodes, provider) {
+    this.nodes = nodes;
     this.provider = provider;
 
     this.keys = {};
@@ -21,6 +21,10 @@ class Manager {
 
     this.listenToProviderEvents();
     this.listenToNodeEvents();
+  }
+
+  getNode(type) {
+    return this.nodes.find(x => x.type === type);
   }
 
   listenToProviderEvents() {
@@ -110,9 +114,9 @@ class Manager {
         const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
 
         if(targetPeer){
-          this.node.rawBroadcast(p, targetPeer.toString('hex'), 126);
+          this.getNode('devp2p').rawBroadcast(p, targetPeer.toString('hex'), 126);
         } else {
-          this.node.rawBroadcast(p);
+          this.getNode('devp2p').rawBroadcast(p);
           this.sendEnvelopeToSubscribers(msgEnv);
         }
       };
@@ -145,7 +149,7 @@ class Manager {
 
 
     this.provider.events.on("markTrustedPeer", enode => {
-      this.node.addTrustedPeer(enode);
+      this.getNode('devp2p').addTrustedPeer(enode);
     });
 
     
@@ -157,7 +161,7 @@ class Manager {
       const address = ipInfo[0];
       const port = ipInfo[1];
 
-      this.node.addStaticPeer({ id, address, port }, (err, data) => {
+      this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
         if(err){
           cb(err);
         } else {
@@ -185,7 +189,7 @@ class Manager {
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
-        sig: this.node.privateKey,
+        sig: this.getNode('devp2p').privateKey,
         ttl: 50,
         topic: "0x00000000",
         powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
@@ -326,7 +330,7 @@ class Manager {
   }
 
   sendEnvelopeToSubscribers(message) {
-    console.dir('received message, sending to subscribers...');
+    //console.dir('received message, sending to subscribers...');
 
     let [expiry, ttl, topic, data, nonce] = message;
 
@@ -390,7 +394,7 @@ class Manager {
   }
 
   listenToNodeEvents() {
-    this.node.events.on('shh_message', (message) => {
+    this.getNode('devp2p').events.on('shh_message', (message) => {
       this.sendEnvelopeToSubscribers(message);
     });
   }

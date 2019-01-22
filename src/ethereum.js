@@ -116,7 +116,6 @@ class Ethereum {
       let peerId = peer._hello.id.toString('hex');
 
       this.peers[peerId] = { peer, shh };
-      console.dir(Object.keys(this.peers));
 
       shh.events.on('message', (message, peer) => {
         let [expiry, ttl, topic, data, nonce] = message;
@@ -139,7 +138,7 @@ class Ethereum {
       });
 
       const clientId = peer.getHelloMessage().clientId;
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
+      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId}`));
 
     })
 

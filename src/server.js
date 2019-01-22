@@ -1,17 +1,25 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
+const chalk = require('chalk');
+
 require('express-ws')(app);
 
 const Provider = require('./provider');
 const provider = new Provider();
 
-const node = require('./client.js');
-node.start();
-node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
+// DevP2P
+const devp2pNode = require('./client.js');
+devp2pNode.start();
+devp2pNode.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
+
+// LibP2P
+const libp2pNode = require('./libp2p-node.js');
+libp2pNode.start();
+
 
 const Manager = require('./manager');
-const _manager = new Manager(node, provider);
+const _manager = new Manager([devp2pNode, libp2pNode], provider);
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
@@ -43,4 +51,5 @@ app.ws('/', function(ws, _req) {
   });
 });
 
-app.listen(8546, () => console.log('Murmur listening on port 8546!'));
+app.listen(8546, () => console.log(chalk.yellow('Murmur listening on port 8546!')));
+
