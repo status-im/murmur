@@ -23,5 +23,5 @@ setTimeout(
     sig: privKey
   });
   console.log("A");
-}), 10000);
+}), 5000);
  // TODO: check if ready

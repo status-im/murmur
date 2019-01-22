@@ -22,7 +22,9 @@ require('express-ws')(app);
 
 
   const Manager = require('./manager');
-  const _manager = new Manager([devp2p, libp2p], provider);
+  const _manager = new Manager(provider, {libP2PClient: false, isBridge: true});
+  _manager.setupNodes([devp2p, libp2p]);
+  _manager.start();
 
   app.use(bodyParser.urlencoded({extended: true}));
   app.use(bodyParser.json());

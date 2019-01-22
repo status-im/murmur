@@ -121,7 +121,7 @@ class Manager {
         const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
         
         if(this.options.isLibP2PClient){
-          this.getNode('libp2p').dialProtocol("/ip4/127.0.0.1/tcp/33773/ipfs/QmTBFqBcTjbiREVUrKv94rVmeW3DMy4MrHjEN1wou1Z4B3", '/test', (err, conn) => {
+          this.getNode('libp2p').dialProtocol("/ip4/127.0.0.1/tcp/37533/ipfs/QmZLWJesud9er9iQZuJiitsDN2fTLKLn4pWwpkKk4CFYmv", '/test', (err, conn) => {
             if (err) { throw err; }
             pull(pull.values([p.toString('hex')]), conn);
           });
