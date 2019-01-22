@@ -35,4 +35,6 @@ const node  = new Ethereum({
 //node.start()
 //node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303})
 
+node.type = "devp2p";
+
 module.exports = node;
