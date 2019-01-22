@@ -20,7 +20,6 @@ class Murmur {
   async start() {
     const nodes = [];
 
-
     if(this.isLibP2PClient || this.isBridge){
       const LibP2PNode = require('./libp2p-node.js');
       this.libp2p = await LibP2PNode.createNode(this.address);
@@ -29,7 +28,6 @@ class Murmur {
     if(!this.isLibP2PClient) {
       this.devp2p = require('./client.js');
     }
-
 
     if(this.devp2p){
       nodes.push(this.devp2p);
