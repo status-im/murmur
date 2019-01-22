@@ -10,15 +10,22 @@ const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
 const bloom = require('./bloom');
 
+const pull = require('pull-stream');
+
 class Manager {
 
-  constructor(nodes, provider) {
-    this.nodes = nodes;
+  constructor(provider, options) {
     this.provider = provider;
-
+    this.options = options;
     this.keys = {};
     this.subscriptions = {};
+  }
 
+  setupNodes(nodes){
+    this.nodes = nodes;
+  }
+
+  start(){
     this.listenToProviderEvents();
     this.listenToNodeEvents();
   }
@@ -112,12 +119,19 @@ class Manager {
         msgEnv.push(nonceBuffer);
 
         const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
-
-        if(targetPeer){
-          this.getNode('devp2p').rawBroadcast(p, targetPeer.toString('hex'), 126);
+        
+        if(this.options.isLibP2PClient){
+          this.getNode('libp2p').dialProtocol("/ip4/127.0.0.1/tcp/33773/ipfs/QmTBFqBcTjbiREVUrKv94rVmeW3DMy4MrHjEN1wou1Z4B3", '/test', (err, conn) => {
+            if (err) { throw err; }
+            pull(pull.values([p.toString('hex')]), conn);
+          });
         } else {
-          this.getNode('devp2p').rawBroadcast(p);
-          this.sendEnvelopeToSubscribers(msgEnv);
+          if(targetPeer){
+            this.getNode('devp2p').rawBroadcast(p, targetPeer.toString('hex'), 126);
+          } else {
+            this.getNode('devp2p').rawBroadcast(p);
+            this.sendEnvelopeToSubscribers(msgEnv);
+          }
         }
       };
 
@@ -394,9 +408,10 @@ class Manager {
   }
 
   listenToNodeEvents() {
-    this.getNode('devp2p').events.on('shh_message', (message) => {
-      this.sendEnvelopeToSubscribers(message);
-    });
+    if(this.getNode('devp2p'))
+      this.getNode('devp2p').events.on('shh_message', (message) => {
+        this.sendEnvelopeToSubscribers(message);
+      });
   }
 
 }
