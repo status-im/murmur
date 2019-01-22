@@ -174,7 +174,7 @@ class Ethereum {
   addBootnodes(bootnodes) {
     bootnodes.forEach((bootnode) => {
       this.dpt.bootstrap(bootnode).catch((err) => {
-        console.error(chalk.bold.red(`DPT bootstrap error: ${err.stack || err}`));
+        console.error(chalk.bold.red(`DPT bootstrap error: ${err.message}`));
       });
     });
   }
@@ -187,7 +187,7 @@ class Ethereum {
         address: peer.address,
         port: peer.tcpPort
       });
-    }).catch((err) => console.log(`error on connection to local node: ${err.stack || err}`));
+    }).catch((err) => console.log(chalk.bold.red(`error on connection to local node: ${err.message}`)));
   }
 
 }
