@@ -1,4 +1,4 @@
-const Ethereum = require('./ethereum.js');
+const DevP2PNode = require('./devp2p-node.js');
 const { randomBytes } = require('crypto');
 // const staticNodesJson = require('./data/static-nodes.json');
 
@@ -24,7 +24,7 @@ const STATICNODES = require('./data/static-nodes.json').map((node) => {
   return { id, address, port };
 });
 
-const node  = new Ethereum({
+const node  = new DevP2PNode({
   chainId: CHAIN_ID,
   privateKey: randomBytes(32),
   bootnodes: BOOTNODES,

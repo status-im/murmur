@@ -3,6 +3,7 @@ const SECIO = require('libp2p-secio');
 const Bootstrap = require('libp2p-bootstrap');
 const libp2p = require('libp2p');
 const KadDHT = require('libp2p-kad-dht');
+const MulticastDNS = require('libp2p-mdns')
 
 
 const TCP = require('libp2p-tcp');
@@ -18,7 +19,7 @@ class LibP2PBundle extends libp2p {
         ],
         streamMuxer: [Mplex],
         connEncryption: [SECIO],
-        peerDiscovery: [Bootstrap],
+        peerDiscovery: [Bootstrap, MulticastDNS],
         dht: KadDHT
       },
       peerInfo,

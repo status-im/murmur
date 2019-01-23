@@ -11,7 +11,7 @@ const {keccak256} = require("eth-lib/lib/hash");
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
-class Ethereum {
+class DevP2PNode {
 
   constructor(options) {
     this.chainId = options.chainId;
@@ -36,16 +36,7 @@ class Ethereum {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msgType, msg) {
-    if (msgType !== "ssh_send_message") return;
-
-    for (let peerId of Object.keys(this.peers)) {
-      let peer = this.peers[peerId];
-      peer.shh.sendMessage(1, msg);
-    }
-  }
-
-  rawBroadcast(msg, peerId, code = 1) {
+  broadcast(msg, peerId, code = 1) {
     if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
@@ -138,9 +129,8 @@ class Ethereum {
       });
 
       const clientId = peer.getHelloMessage().clientId;
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId}`));
-
-    })
+      console.log(chalk.green(`Add devp2p peer: ${getPeerAddr(peer)} ${clientId}`));
+    });
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
       const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
@@ -192,4 +182,4 @@ class Ethereum {
 
 }
 
-module.exports = Ethereum;
+module.exports = DevP2PNode;
