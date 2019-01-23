@@ -403,14 +403,13 @@ class Manager {
 
     }
     // console.dir(message)
-    // TODO: send to clients sbuscribed to this message topic
+    // TODO: send to clients subscribed to this message topic
   }
 
   listenToNodeEvents() {
-    if(this.getNode('devp2p'))
-      this.getNode('devp2p').events.on('shh_message', (message) => {
-        this.sendEnvelopeToSubscribers(message);
-      });
+    // TODO: refactor this to only use a single event emitter
+    if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', msg => { this.sendEnvelopeToSubscribers(msg); });
+    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', msg => { this.sendEnvelopeToSubscribers(msg); });
   }
 
 }

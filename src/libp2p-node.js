@@ -3,8 +3,9 @@ const PeerInfo = require('peer-info');
 const chalk = require('chalk');
 const pull = require('pull-stream');
 const drain = require('pull-stream/sinks/drain');
-
+const rlp = require('rlp-encoding');
 const Events = require('events');
+const {keccak256} = require("eth-lib/lib/hash");
 
 let p2pNode;
 
@@ -14,10 +15,11 @@ const libP2Phandler = (err) => {
   p2pNode.peerInfo.multiaddrs.forEach((ma) => console.log(chalk.yellow("- " + ma.toString())));
 };
 
-// TODO: refactor this and devp2p so message tracker is shared
-const messageTracker = [];
 
-const createNode = (address, events) => {
+// TODO: refactor this and devp2p so message tracker is shared
+const messagesTracker = [];
+
+const createNode = (address, self) => {
   return new Promise(function(resolve, reject) {
     PeerInfo.create((err, peerInfo) => {
       if(err) {
@@ -32,43 +34,33 @@ const createNode = (address, events) => {
       };
 
       p2pNode.handle('/shh', (protocol, conn) => {
-        
         pull(conn,
-          pull.map((v) => v.toString()),
-          drain(message => {
-            console.log("Received message: " + message);
+          pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
+          drain(messages => {
+            conn.getPeerInfo((err, peerInfo) => {
+
+            
+            // TODO: Repeated code with devp2p. Abstract this
+            const message = messages[0];
+            let [expiry, ttl, topic, data, nonce] = message[0];
+            let id = keccak256(message.join(''));
+            if (messagesTracker[id]) {
+              return;
+            }
+
+            // TODO: for mailservers, inspect pee
+            // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
+            /*if(self.isTooOld(expiry) && !PEER_IS_TRUSTED){
+              console.log("Discarting old envelope");
+              return;
+            }*/
+
+            messagesTracker[id] = ttl;
+
+            self.events.emit('shh_message', message);
+            });
           })
         );
-
-
-        // TODO: 
-        // Verify message tracker
-        // Verify if too old
-
-        // add to tracker
-        // emit event
-
-
-        /*
-        let [expiry, ttl, topic, data, nonce] = message;
-
-        let id = keccak256(message.join(''));
-
-        if (this.messagesTracker[id]) {
-        //  console.dir("same message: " + id)
-          return;
-        }
-
-        // Verifying if old message is sent by trusted peer
-        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
-          console.log("Discarting old envelope");
-          return;
-        }
-
-        this.messagesTracker[id] = ttl;
-        */
-
-      // events.emit('shh_message', message);
       });
       
       resolve(p2pNode);
@@ -94,7 +86,7 @@ class LibP2PNode {
       if(!ip) ip = "0.0.0.0";
       if(!port) port = "0";
       const address =  `/ip4/${ip}/tcp/${port}`;
-      this.node = await createNode(address, this.events);
+      this.node = await createNode(address, this);
       this.node.start();
 
       this._startDiscovery();
@@ -140,6 +132,11 @@ class LibP2PNode {
   addStaticPeer(node, cb){
     this.staticnodes.push(node);
     // TODO:
+  }
+
+  isTooOld(expiry) {
+    const dt = (new Date()).getTime() / 1000;
+    return expiry.readUInt32BE(0) < dt;
   }
 }
 
