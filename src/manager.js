@@ -344,7 +344,6 @@ class Manager {
 
   sendEnvelopeToSubscribers(message) {
     //console.dir('received message, sending to subscribers...');
-
     let [expiry, ttl, topic, data, nonce] = message;
 
     // Preparing data
@@ -409,7 +408,15 @@ class Manager {
   listenToNodeEvents() {
     // TODO: refactor this to only use a single event emitter
     if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', msg => { this.sendEnvelopeToSubscribers(msg); });
-    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', msg => { this.sendEnvelopeToSubscribers(msg); });
+    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', msg => { 
+      // TODO: Determine if this node is a bridge, and then forward message to devp2p
+      // TODO: Determine if message is expired before forwarding?
+      this.getNode('devp2p').broadcast(rlp.encode([msg]));
+      this.sendEnvelopeToSubscribers(msg); 
+    });
+  
+    // TODO:
+    // If I receive a devp2p message, broadcast it to other ppers
   }
 
 }
