@@ -17,7 +17,7 @@ require('express-ws')(app);
 
   // LibP2P
   const LibP2PNode = require('./libp2p-node.js');
-  const libp2p =  await LibP2PNode.createNode();
+  const libp2p =  new LibP2PNode();
   libp2p.start();
 
 

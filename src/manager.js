@@ -127,9 +127,9 @@ class Manager {
           });
         } else {
           if(targetPeer){
-            this.getNode('devp2p').rawBroadcast(p, targetPeer.toString('hex'), 126);
+            this.getNode('devp2p').broadcast(p, targetPeer.toString('hex'), 126);
           } else {
-            this.getNode('devp2p').rawBroadcast(p);
+            this.getNode('devp2p').broadcast(p);
             this.sendEnvelopeToSubscribers(msgEnv);
           }
         }

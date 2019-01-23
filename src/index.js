@@ -7,7 +7,7 @@ class Murmur {
     this.isBridge = this.isLibP2PClient ? false : (options.isBridge || true);
     this.address = options.address || '/ip4/0.0.0.0/tcp/0';
     this.bootnodes = options.bootnodes || [];
-
+this.isLibP2PClient = true;
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
       isLibP2PClient: this.isLibP2PClient, 
@@ -22,7 +22,7 @@ class Murmur {
 
     if(this.isLibP2PClient || this.isBridge){
       const LibP2PNode = require('./libp2p-node.js');
-      this.libp2p = await LibP2PNode.createNode(this.address);
+      this.libp2p = new LibP2PNode();
     }
 
     if(!this.isLibP2PClient) {
