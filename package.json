@@ -70,6 +70,7 @@
     "big.js": "^5.2.2",
     "bigint-buffer": "^1.1.2",
     "chalk": "^2.4.1",
+    "commander": "^2.19.0",
     "elliptic": "^6.4.1",
     "eth-lib": "^0.2.8",
     "ethereum-common": "^0.2.1",
