@@ -10,8 +10,6 @@ const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
 const bloom = require('./bloom');
 
-const pull = require('pull-stream');
-
 class Manager {
 
   constructor(provider, options) {
@@ -120,19 +118,19 @@ class Manager {
 
         const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
         
-        if(this.options.isLibP2PClient){
-          this.getNode('libp2p').dialProtocol("/ip4/127.0.0.1/tcp/37533/ipfs/QmZLWJesud9er9iQZuJiitsDN2fTLKLn4pWwpkKk4CFYmv", '/test', (err, conn) => {
-            if (err) { throw err; }
-            pull(pull.values([p.toString('hex')]), conn);
-          });
+        const devp2p = this.getNode('devp2p');
+        const libp2p = this.getNode('libp2p');
+
+        if(targetPeer){
+          // Mailserver request
+          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), 126);
         } else {
-          if(targetPeer){
-            this.getNode('devp2p').broadcast(p, targetPeer.toString('hex'), 126);
-          } else {
-            this.getNode('devp2p').broadcast(p);
-            this.sendEnvelopeToSubscribers(msgEnv);
-          }
+          if(devp2p) devp2p.broadcast(p);
+          if(libp2p) libp2p.broadcast(p);
+
+          this.sendEnvelopeToSubscribers(msgEnv);
         }
+      
       };
 
       if(options.symKey){
@@ -200,6 +198,7 @@ class Manager {
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
       }
 
+      // TODO: mailserver request. Check how it would work with libp2p
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
