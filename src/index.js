@@ -7,7 +7,7 @@ class Murmur {
     this.isBridge = this.isLibP2PClient ? false : (options.isBridge || true);
     this.address = options.address || '/ip4/0.0.0.0/tcp/0';
     this.bootnodes = options.bootnodes || [];
-this.isLibP2PClient = true;
+    
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
       isLibP2PClient: this.isLibP2PClient, 
