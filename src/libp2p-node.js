@@ -41,6 +41,8 @@ const createNode = (address, self) => {
 
             
             // TODO: Repeated code with devp2p. Abstract this
+            // Abstraction must take in account if message id is received from what protocol
+            // and determine if it's really duplicated or not.)
             const message = messages[0];
             let [expiry, ttl, topic, data, nonce] = message[0];
             let id = keccak256(message.join(''));
@@ -48,7 +50,7 @@ const createNode = (address, self) => {
               return;
             }
 
-            // TODO: for mailservers, inspect pee
+            // TODO: for mailservers, inspect peer
             // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
             /*if(self.isTooOld(expiry) && !PEER_IS_TRUSTED){
               console.log("Discarting old envelope");
@@ -56,6 +58,9 @@ const createNode = (address, self) => {
             }*/
 
             messagesTracker[id] = ttl;
+
+            // Broadcast received message again.
+            this.broadcast(rlp.encode([message]));
 
             self.events.emit('shh_message', message);
             });

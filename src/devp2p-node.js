@@ -3,7 +3,7 @@ const devp2p = require('ethereumjs-devp2p');
 const ms = require('ms');
 const chalk = require('chalk');
 const assert = require('assert');
-// const rlp = require('rlp-encoding');
+const rlp = require('rlp-encoding');
 // const Buffer = require('safe-buffer').Buffer;
 const SHH = require('./shh.js');
 const Events = require('events');
@@ -125,6 +125,10 @@ class DevP2PNode {
         }
 
         this.messagesTracker[id] = ttl;
+
+        // Broadcast received message again.
+        this.broadcast(rlp.encode([message]));
+
         this.events.emit('shh_message', message);
       });
 

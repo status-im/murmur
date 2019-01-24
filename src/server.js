@@ -7,13 +7,19 @@ program
   .version('0.1.0')
   .option('--ws', 'Enable the WS-RPC server')
   .option('--wsport [port]', 'WS-RPC Port (default: 8546)')
+  .option('--devp2p-tcp-port', "DEVP2P TCP Listener Port (default: 30303")
+  .option('--devp2p-udp-port', "DEVP2P UDP Discovery Port (default: 30303")
   .option('--no-devp2p', 'Disable DEVP2P')
   .option('--no-libp2p', 'Disable LIBP2P')
+  .option('--no-bridge', "Disable bridge between LIBP2P and DEVP2P")
   .parse(process.argv);
 
 let app;
 const ENABLE_WS = program.ws === true;
 const WS_PORT =  program.wsport !== undefined ? parseInt(program.wsport, 10) : 8546;
+const TCP_PORT =  program.devp2pTcpPort !== undefined ? parseInt(program.devp2pTcpPort, 10) : 30303;
+const UDP_PORT =  program.devp2pUdpPort !== undefined ? parseInt(program.devp2pUdpPort, 10) : 30303;
+const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
 
 if(ENABLE_WS){
   app = express();
@@ -29,7 +35,7 @@ if(ENABLE_WS){
   if(program.devp2p){
     const devp2p = require('./client.js');
     devp2p.start();
-    devp2p.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
+    devp2p.connectTo({address: '127.0.0.1', udpPort: UDP_PORT, tcpPort: TCP_PORT});
     nodes.push(devp2p);
   }
 
@@ -42,7 +48,7 @@ if(ENABLE_WS){
 
 
   const Manager = require('./manager');
-  const _manager = new Manager(provider, {libP2PClient: false, isBridge: true});
+  const _manager = new Manager(provider, {isBridge: IS_BRIDGE});
   _manager.setupNodes(nodes);
   _manager.start();
 
@@ -66,14 +72,10 @@ if(ENABLE_WS){
     provider.on('data', (result) => {
       // TODO: actually should only do this for subscribers.....
       console.dir("======================");
-      console.dir("======================");
-      console.dir("======================");
       console.dir("sending....");
       console.log(JSON.stringify(result));
       console.dir(result);
       ws.send(JSON.stringify(result));
-      console.dir("======================");
-      console.dir("======================");
       console.dir("======================");
     });
   });
