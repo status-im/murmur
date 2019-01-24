@@ -15,10 +15,6 @@ const libP2Phandler = (err) => {
   p2pNode.peerInfo.multiaddrs.forEach((ma) => console.log(chalk.yellow("- " + ma.toString())));
 };
 
-
-// TODO: refactor this and devp2p so message tracker is shared
-const messagesTracker = [];
-
 const createNode = (address, self) => {
   return new Promise(function(resolve, reject) {
     PeerInfo.create((err, peerInfo) => {
@@ -44,11 +40,11 @@ const createNode = (address, self) => {
             // Abstraction must take in account if message id is received from what protocol
             // and determine if it's really duplicated or not.)
             const message = messages[0];
-            let [expiry, ttl, topic, data, nonce] = message[0];
-            let id = keccak256(message.join(''));
-            if (messagesTracker[id]) {
-              return;
-            }
+
+            if(self.tracker.exists(message, 'libp2p')) return;
+
+            let [expiry, ttl, topic, data, nonce] = message[0]; // TODO: Refactor with function to obtain data object
+
 
             // TODO: for mailservers, inspect peer
             // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
@@ -56,11 +52,14 @@ const createNode = (address, self) => {
               // console.log("Discarting old envelope");
               return;
             }*/
+            if(Buffer.isBuffer(topic) && topic.toString('hex') == "27ee704f")
+            console.log("Receiving message on libp2p")
 
-            messagesTracker[id] = ttl;
+
+            self.tracker.push(message, 'libp2p');
 
             // Broadcast received message again.
-            self.broadcast(rlp.encode([message]));
+            self.broadcast(rlp.encode(messages));
 
             self.events.emit('shh_message', message);
             });
@@ -85,6 +84,11 @@ class LibP2PNode {
       this.messagesTracker = {};
       this.peers = {};
       this.type = "libp2p";
+      this.tracker = null;
+    }
+
+    setTracker(tracker){
+      this.tracker = tracker;
     }
 
     async start(ip, port){
@@ -136,7 +140,7 @@ class LibP2PNode {
 
   addStaticPeer(node, cb){
     this.staticnodes.push(node);
-    // TODO:
+    // TODO: bootnodes
   }
 
   isTooOld(expiry) {
