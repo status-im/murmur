@@ -9,6 +9,8 @@ const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
 const bloom = require('./bloom');
+const MessageTracker = require('./message-tracker');
+
 
 class Manager {
 
@@ -17,10 +19,14 @@ class Manager {
     this.options = options;
     this.keys = {};
     this.subscriptions = {};
+    this.messagesTracker = new MessageTracker();
   }
 
   setupNodes(nodes){
     this.nodes = nodes;
+    nodes.map(n => {
+      n.setTracker(this.messagesTracker);
+    });
   }
 
   start(){
@@ -110,8 +116,14 @@ class Manager {
         nonceBuffer = Buffer.from(val);
 
         const msgEnv = [];
-        msgEnv.push(powResult.expiry);
-        msgEnv.push(ttl);
+
+        const expiryB = Buffer.alloc(4);
+              expiryB.writeUInt32BE(powResult.expiry);
+        const ttlB = Buffer.alloc(1);
+              ttlB.writeUInt8(ttl);
+
+        msgEnv.push(expiryB);
+        msgEnv.push(ttlB);
         msgEnv.push(topic);
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
@@ -124,9 +136,17 @@ class Manager {
         if(targetPeer){
           // Mailserver request
           if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), 126);
+          // TODO: libp2p mailserver
         } else {
-          if(devp2p) devp2p.broadcast(p);
-          if(libp2p) libp2p.broadcast(p);
+
+          if(devp2p) {
+            devp2p.broadcast(p);
+            this.messagesTracker.push(msgEnv, 'devp2p');
+          }
+          if(libp2p){
+            libp2p.broadcast(p);
+            this.messagesTracker.push(msgEnv, 'libp2p');
+          }
 
           this.sendEnvelopeToSubscribers(msgEnv);
         }
@@ -145,8 +165,6 @@ class Manager {
       const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
       for (let topic of topics) {
-        console.dir("==> topic");
-        console.dir(topic.toString('hex'));
         if (!this.subscriptions[topic]) {
           this.subscriptions[topic] = {};
         }
@@ -343,6 +361,8 @@ class Manager {
   }
 
   sendEnvelopeToSubscribers(message) {
+    if(this.messagesTracker.isSent(message)) return;
+
     //console.dir('received message, sending to subscribers...');
     let [expiry, ttl, topic, data, nonce] = message;
 
@@ -362,11 +382,10 @@ class Manager {
     for (let subscriptionId of Object.keys(topicSubscriptions)) {
 
       const decryptCB = (err, decrypted) => {
-        console.dir("--------------");
+        
         if(!decrypted) return;
         // console.dir(decrypted.payload.toString());
         //onsole.dir(decrypted.pubKey.toString('hex'));
-        console.dir("--------------");
 
         this.provider.transmit({
           "jsonrpc": "2.0",
@@ -389,7 +408,7 @@ class Manager {
         });
       };
 
-      console.dir(">>>>> subscription");
+     // console.dir(">>>>> subscription");
       let keyId = topicSubscriptions[subscriptionId].symKeyID;
       if (!keyId) {
         keyId = topicSubscriptions[subscriptionId].privateKeyID;
@@ -408,18 +427,13 @@ class Manager {
   listenToNodeEvents() {
     const isBridge = this.options.isBridge;
 
-    // TODO: refactor this to only use a single event emitter
-
-    const cb = protocol => msg => {
+    const handleMessage = protocol => msg => {
       if(isBridge) this.getNode(protocol).broadcast(rlp.encode([msg]));
       this.sendEnvelopeToSubscribers(msg); 
     };
 
-    if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', cb('libp2p'));
-    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', cb('devp2p'));
-  
-    // TODO:
-    // If I receive a devp2p message, broadcast it to other ppers
+    if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
+    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
   }
 
 }

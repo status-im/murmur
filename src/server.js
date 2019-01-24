@@ -59,24 +59,23 @@ if(ENABLE_WS){
 
   app.ws('/', function(ws, _req) {
     ws.on('message', function(msg) {
-      console.dir(msg);
       provider.sendAsync(JSON.parse(msg), (err, jsonResponse) => {
         if (err) {
           console.dir(err);
           ws.send({error: err});
         }
-        console.dir(jsonResponse);
         ws.send(JSON.stringify(jsonResponse));
       });
     });
     provider.on('data', (result) => {
+      
       // TODO: actually should only do this for subscribers.....
-      console.dir("======================");
-      console.dir("sending....");
-      console.log(JSON.stringify(result));
-      console.dir(result);
+      //console.dir("======================");
+      //console.dir("sending....");
+      //console.log(JSON.stringify(result));
+      //console.dir(result);
       ws.send(JSON.stringify(result));
-      console.dir("======================");
+      //console.dir("======================");
     });
   });
 

@@ -22,6 +22,11 @@ class DevP2PNode {
     this.events = new Events();
     this.messagesTracker = {};
     this.peers = {};
+    this.tracker = null;
+  }
+
+  setTracker(tracker){
+    this.tracker = tracker;
   }
 
   start(ip, port) {
@@ -111,12 +116,7 @@ class DevP2PNode {
       shh.events.on('message', (message, peer) => {
         let [expiry, ttl, topic, data, nonce] = message;
 
-        let id = keccak256(message.join(''));
-
-        if (this.messagesTracker[id]) {
-        //  console.dir("same message: " + id)
-          return;
-        }
+        if(this.tracker.exists(message, 'devp2p')) return;
 
         // Verifying if old message is sent by trusted peer
         if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
@@ -124,7 +124,7 @@ class DevP2PNode {
           return;
         }
 
-        this.messagesTracker[id] = ttl;
+        this.tracker.push(message, 'devp2p');
 
         // Broadcast received message again.
         this.broadcast(rlp.encode([message]));
