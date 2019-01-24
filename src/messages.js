@@ -222,7 +222,7 @@ const parseMessage = (message) => {
     pubKey = ecRecoverPubKey(hash, signature);
   }
 
-  // TODO:
+  // TODO: calculate padding
   let padding = null;
 
   return assignDefined({}, {payload, pubKey, signature, padding});

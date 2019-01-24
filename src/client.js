@@ -1,8 +1,8 @@
 const DevP2PNode = require('./devp2p-node.js');
 const { randomBytes } = require('crypto');
-// const staticNodesJson = require('./data/static-nodes.json');
 
 const CHAIN_ID = 3;
+
 const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
   return node.chainId === CHAIN_ID;
 }).map((node) => {
@@ -13,7 +13,7 @@ const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
   };
 });
 
-const STATICNODES = require('./data/static-nodes.json').map((node) => {
+const STATICNODES = require('../data/config.json').devp2p["static-nodes"].map((node) => {
   const p = node.split("@");
   const q = p[1].split(":");
 
@@ -30,10 +30,6 @@ const node  = new DevP2PNode({
   bootnodes: BOOTNODES,
   staticnodes: STATICNODES
 });
-
-//node.start('0.0.0.0', 30305)
-//node.start()
-//node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303})
 
 node.type = "devp2p";
 
