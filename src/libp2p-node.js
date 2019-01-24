@@ -5,7 +5,6 @@ const pull = require('pull-stream');
 const drain = require('pull-stream/sinks/drain');
 const rlp = require('rlp-encoding');
 const Events = require('events');
-const {keccak256} = require("eth-lib/lib/hash");
 
 let p2pNode;
 
@@ -35,12 +34,7 @@ const createNode = (address, self) => {
           drain(messages => {
             conn.getPeerInfo((err, peerInfo) => {
 
-            
-            // TODO: Repeated code with devp2p. Abstract this
-            // Abstraction must take in account if message id is received from what protocol
-            // and determine if it's really duplicated or not.)
             const message = messages[0];
-
             if(self.tracker.exists(message, 'libp2p')) return;
 
             let [expiry, ttl, topic, data, nonce] = message[0]; // TODO: Refactor with function to obtain data object
@@ -52,10 +46,7 @@ const createNode = (address, self) => {
               // console.log("Discarting old envelope");
               return;
             }*/
-            if(Buffer.isBuffer(topic) && topic.toString('hex') == "27ee704f")
-            console.log("Receiving message on libp2p")
-
-
+            
             self.tracker.push(message, 'libp2p');
 
             // Broadcast received message again.
