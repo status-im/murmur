@@ -120,7 +120,7 @@ class DevP2PNode {
 
         // Verifying if old message is sent by trusted peer
         if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
-          console.log("Discarting old envelope");
+          // console.log("Discarting old envelope");
           return;
         }
 

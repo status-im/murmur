@@ -53,14 +53,14 @@ const createNode = (address, self) => {
             // TODO: for mailservers, inspect peer
             // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
             /*if(self.isTooOld(expiry) && !PEER_IS_TRUSTED){
-              console.log("Discarting old envelope");
+              // console.log("Discarting old envelope");
               return;
             }*/
 
             messagesTracker[id] = ttl;
 
             // Broadcast received message again.
-            this.broadcast(rlp.encode([message]));
+            self.broadcast(rlp.encode([message]));
 
             self.events.emit('shh_message', message);
             });
