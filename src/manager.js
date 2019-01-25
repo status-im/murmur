@@ -9,18 +9,33 @@ const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
 const bloom = require('./bloom');
+const MessageTracker = require('./message-tracker');
+
 
 class Manager {
 
-  constructor(node, provider) {
-    this.node = node;
+  constructor(provider, options) {
     this.provider = provider;
-
+    this.options = options;
     this.keys = {};
     this.subscriptions = {};
+    this.messagesTracker = new MessageTracker();
+  }
 
+  setupNodes(nodes){
+    this.nodes = nodes;
+    nodes.map(n => {
+      n.setTracker(this.messagesTracker);
+    });
+  }
+
+  start(){
     this.listenToProviderEvents();
     this.listenToNodeEvents();
+  }
+
+  getNode(type) {
+    return this.nodes.find(x => x.type === type);
   }
 
   listenToProviderEvents() {
@@ -101,20 +116,41 @@ class Manager {
         nonceBuffer = Buffer.from(val);
 
         const msgEnv = [];
-        msgEnv.push(powResult.expiry);
-        msgEnv.push(ttl);
+
+        const expiryB = Buffer.alloc(4);
+              expiryB.writeUInt32BE(powResult.expiry);
+        const ttlB = Buffer.alloc(1);
+              ttlB.writeUInt8(ttl);
+
+        msgEnv.push(expiryB);
+        msgEnv.push(ttlB);
         msgEnv.push(topic);
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
         const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
+        
+        const devp2p = this.getNode('devp2p');
+        const libp2p = this.getNode('libp2p');
 
         if(targetPeer){
-          this.node.rawBroadcast(p, targetPeer.toString('hex'), 126);
+          // Mailserver request
+          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), 126);
+          // TODO: libp2p mailserver
         } else {
-          this.node.rawBroadcast(p);
+
+          if(devp2p) {
+            devp2p.broadcast(p);
+            this.messagesTracker.push(msgEnv, 'devp2p');
+          }
+          if(libp2p){
+            libp2p.broadcast(p);
+            this.messagesTracker.push(msgEnv, 'libp2p');
+          }
+
           this.sendEnvelopeToSubscribers(msgEnv);
         }
+      
       };
 
       if(options.symKey){
@@ -129,8 +165,6 @@ class Manager {
       const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
       for (let topic of topics) {
-        console.dir("==> topic");
-        console.dir(topic.toString('hex'));
         if (!this.subscriptions[topic]) {
           this.subscriptions[topic] = {};
         }
@@ -145,7 +179,7 @@ class Manager {
 
 
     this.provider.events.on("markTrustedPeer", enode => {
-      this.node.addTrustedPeer(enode);
+      this.getNode('devp2p').addTrustedPeer(enode);
     });
 
     
@@ -157,7 +191,7 @@ class Manager {
       const address = ipInfo[0];
       const port = ipInfo[1];
 
-      this.node.addStaticPeer({ id, address, port }, (err, data) => {
+      this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
         if(err){
           cb(err);
         } else {
@@ -182,10 +216,11 @@ class Manager {
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
       }
 
+      // TODO: mailserver request. Check how it would work with libp2p
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
-        sig: this.node.privateKey,
+        sig: this.getNode('devp2p').privateKey,
         ttl: 50,
         topic: "0x00000000",
         powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
@@ -326,8 +361,9 @@ class Manager {
   }
 
   sendEnvelopeToSubscribers(message) {
-    console.dir('received message, sending to subscribers...');
+    if(this.messagesTracker.isSent(message)) return;
 
+    //console.dir('received message, sending to subscribers...');
     let [expiry, ttl, topic, data, nonce] = message;
 
     // Preparing data
@@ -346,11 +382,10 @@ class Manager {
     for (let subscriptionId of Object.keys(topicSubscriptions)) {
 
       const decryptCB = (err, decrypted) => {
-        console.dir("--------------");
+        
         if(!decrypted) return;
         // console.dir(decrypted.payload.toString());
         //onsole.dir(decrypted.pubKey.toString('hex'));
-        console.dir("--------------");
 
         this.provider.transmit({
           "jsonrpc": "2.0",
@@ -373,7 +408,7 @@ class Manager {
         });
       };
 
-      console.dir(">>>>> subscription");
+     // console.dir(">>>>> subscription");
       let keyId = topicSubscriptions[subscriptionId].symKeyID;
       if (!keyId) {
         keyId = topicSubscriptions[subscriptionId].privateKeyID;
@@ -386,13 +421,19 @@ class Manager {
 
     }
     // console.dir(message)
-    // TODO: send to clients sbuscribed to this message topic
+    // TODO: send to clients subscribed to this message topic
   }
 
   listenToNodeEvents() {
-    this.node.events.on('shh_message', (message) => {
-      this.sendEnvelopeToSubscribers(message);
-    });
+    const isBridge = this.options.isBridge;
+
+    const handleMessage = protocol => msg => {
+      if(isBridge) this.getNode(protocol).broadcast(rlp.encode([msg]));
+      this.sendEnvelopeToSubscribers(msg); 
+    };
+
+    if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
+    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
   }
 
 }

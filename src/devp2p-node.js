@@ -3,15 +3,21 @@ const devp2p = require('ethereumjs-devp2p');
 const ms = require('ms');
 const chalk = require('chalk');
 const assert = require('assert');
-// const rlp = require('rlp-encoding');
+const rlp = require('rlp-encoding');
 // const Buffer = require('safe-buffer').Buffer;
 const SHH = require('./shh.js');
 const Events = require('events');
-const {keccak256} = require("eth-lib/lib/hash");
+const ip = require('ip');
+
+
+const devP2PHello = (clientId, port) => {
+  console.log(chalk.yellow("* devP2P started: true, listening on:"));
+  console.log(chalk.yellow("- " + clientId.toString('hex') + '@' + ip.address() + ":" + port));
+};
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
-class Ethereum {
+class DevP2PNode {
 
   constructor(options) {
     this.chainId = options.chainId;
@@ -22,9 +28,17 @@ class Ethereum {
     this.events = new Events();
     this.messagesTracker = {};
     this.peers = {};
+    this.tracker = null;
+  }
+
+  setTracker(tracker){
+    this.tracker = tracker;
   }
 
   start(ip, port) {
+    this.ip = ip;
+    this.port = port;
+
     this._startDPT();
     this._startRLPX();
 
@@ -36,16 +50,7 @@ class Ethereum {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msgType, msg) {
-    if (msgType !== "ssh_send_message") return;
-
-    for (let peerId of Object.keys(this.peers)) {
-      let peer = this.peers[peerId];
-      peer.shh.sendMessage(1, msg);
-    }
-  }
-
-  rawBroadcast(msg, peerId, code = 1) {
+  broadcast(msg, peerId, code = 1) {
     if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
@@ -62,7 +67,6 @@ class Ethereum {
       refreshInterval: 30000,
       endpoint: { address: '0.0.0.0', udpPort: null, tcpPort: null }
     });
-
     this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)));
   }
 
@@ -108,6 +112,8 @@ class Ethereum {
       this.rlpx.connect({id: node.id, address: node.address, port: node.port});
     });
 
+    devP2PHello(this.rlpx._clientId, this.port);    
+
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)));
 
     this.rlpx.on('peer:added', (peer) => {
@@ -116,32 +122,29 @@ class Ethereum {
       let peerId = peer._hello.id.toString('hex');
 
       this.peers[peerId] = { peer, shh };
-      console.dir(Object.keys(this.peers));
 
       shh.events.on('message', (message, peer) => {
         let [expiry, ttl, topic, data, nonce] = message;
 
-        let id = keccak256(message.join(''));
-
-        if (this.messagesTracker[id]) {
-        //  console.dir("same message: " + id)
-          return;
-        }
+        if(this.tracker.exists(message, 'devp2p')) return;
 
         // Verifying if old message is sent by trusted peer
         if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
-          console.log("Discarting old envelope");
+          // console.log("Discarting old envelope");
           return;
         }
 
-        this.messagesTracker[id] = ttl;
+        this.tracker.push(message, 'devp2p');
+
+        // Broadcast received message again.
+        this.broadcast(rlp.encode([message]));
+
         this.events.emit('shh_message', message);
       });
 
       const clientId = peer.getHelloMessage().clientId;
-      console.log(chalk.green(`Add peer: ${getPeerAddr(peer)} ${clientId} (total: ${this.rlpx.getPeers().length})`))
-
-    })
+      console.log(chalk.green(`Add devp2p peer: ${getPeerAddr(peer)} ${clientId}`));
+    });
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
       const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
@@ -175,7 +178,7 @@ class Ethereum {
   addBootnodes(bootnodes) {
     bootnodes.forEach((bootnode) => {
       this.dpt.bootstrap(bootnode).catch((err) => {
-        console.error(chalk.bold.red(`DPT bootstrap error: ${err.stack || err}`));
+        console.error(chalk.bold.red(`DPT bootstrap error: ${err.message}`));
       });
     });
   }
@@ -188,9 +191,9 @@ class Ethereum {
         address: peer.address,
         port: peer.tcpPort
       });
-    }).catch((err) => console.log(`error on connection to local node: ${err.stack || err}`));
+    }).catch((err) => console.log(chalk.bold.red(`error on connection to local node: ${err.message}`)));
   }
 
 }
 
-module.exports = Ethereum;
+module.exports = DevP2PNode;

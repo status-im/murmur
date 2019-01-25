@@ -1,8 +1,8 @@
-const Ethereum = require('./ethereum.js');
+const DevP2PNode = require('./devp2p-node.js');
 const { randomBytes } = require('crypto');
-// const staticNodesJson = require('./data/static-nodes.json');
-
+const config = require('../data/config.json');
 const CHAIN_ID = 3;
+
 const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
   return node.chainId === CHAIN_ID;
 }).map((node) => {
@@ -13,7 +13,7 @@ const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
   };
 });
 
-const STATICNODES = require('./data/static-nodes.json').map((node) => {
+const STATICNODES = config.devp2p["static-nodes"].map((node) => {
   const p = node.split("@");
   const q = p[1].split(":");
 
@@ -24,15 +24,18 @@ const STATICNODES = require('./data/static-nodes.json').map((node) => {
   return { id, address, port };
 });
 
-const node  = new Ethereum({
+
+// TODO: probably not secure and prone to errors. Fix
+const privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
+
+
+const node  = new DevP2PNode({
   chainId: CHAIN_ID,
-  privateKey: randomBytes(32),
+  privateKey,
   bootnodes: BOOTNODES,
   staticnodes: STATICNODES
 });
 
-//node.start('0.0.0.0', 30305)
-//node.start()
-//node.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303})
+node.type = "devp2p";
 
 module.exports = node;
