@@ -2,8 +2,8 @@ const Murmur = require('./src/index');
 const Web3 = require('web3');
 
 const s = new Murmur({
-  libP2PClient: true,
-  bootnodes: ["/ip4/192.168.0.105/tcp/42971/ipfs/QmacmQeZs4NJJys8cjewQLYsmkrLkfnYWjh7cnWxNwvXQX"]
+  protocols: ["devp2p", "libp2p"],
+  isBridge: true
 });
 s.start();
 
@@ -22,6 +22,6 @@ setTimeout(
     ttl: 10,
     sig: privKey
   });
-  console.log("A");
-}), 5000);
+
+}), 10000);
  // TODO: check if ready
