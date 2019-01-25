@@ -7,7 +7,13 @@ const rlp = require('rlp-encoding');
 // const Buffer = require('safe-buffer').Buffer;
 const SHH = require('./shh.js');
 const Events = require('events');
-const {keccak256} = require("eth-lib/lib/hash");
+const ip = require('ip');
+
+
+const devP2PHello = (clientId, port) => {
+  console.log(chalk.yellow("* devP2P started: true, listening on:"));
+  console.log(chalk.yellow("- " + clientId.toString('hex') + '@' + ip.address() + ":" + port));
+};
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
 
@@ -30,6 +36,9 @@ class DevP2PNode {
   }
 
   start(ip, port) {
+    this.ip = ip;
+    this.port = port;
+
     this._startDPT();
     this._startRLPX();
 
@@ -58,7 +67,6 @@ class DevP2PNode {
       refreshInterval: 30000,
       endpoint: { address: '0.0.0.0', udpPort: null, tcpPort: null }
     });
-
     this.dpt.on('error', (err) => console.error(chalk.red(`DPT error: ${err}`)));
   }
 
@@ -103,6 +111,8 @@ class DevP2PNode {
     this.staticnodes.map(node => {
       this.rlpx.connect({id: node.id, address: node.address, port: node.port});
     });
+
+    devP2PHello(this.rlpx._clientId, this.port);    
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)));
 

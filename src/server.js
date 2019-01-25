@@ -7,8 +7,7 @@ program
   .version('0.1.0')
   .option('--ws', 'Enable the WS-RPC server')
   .option('--wsport [port]', 'WS-RPC Port (default: 8546)')
-  .option('--devp2p-tcp-port [port]', "DEVP2P TCP Listener Port (default: 30303")
-  .option('--devp2p-udp-port [port]', "DEVP2P UDP Discovery Port (default: 30303")
+  .option('--devp2p-port [port]', "DEVP2P Port (default: 30303")
   .option('--libp2p-port [port]', "LIBP2P Port (default: 0")
   .option('--no-devp2p', 'Disable DEVP2P')
   .option('--no-libp2p', 'Disable LIBP2P')
@@ -18,8 +17,7 @@ program
 let app;
 const ENABLE_WS = program.ws === true;
 const WS_PORT =  program.wsport !== undefined ? parseInt(program.wsport, 10) : 8546;
-const TCP_PORT =  program.devp2pTcpPort !== undefined ? parseInt(program.devp2pTcpPort, 10) : 30303;
-const UDP_PORT =  program.devp2pUdpPort !== undefined ? parseInt(program.devp2pUdpPort, 10) : 30303;
+const DEVP2P_PORT =  program.devp2pPort !== undefined ? parseInt(program.devp2pPort, 10) : 30303;
 const LIBP2P_PORT =  program.libp2pPort !== undefined ? parseInt(program.libp2pPort, 10) : 0;
 const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
 
@@ -37,7 +35,7 @@ if(ENABLE_WS){
   if(program.devp2p){
     const devp2p = require('./client.js');
     devp2p.start();
-    devp2p.connectTo({address: '127.0.0.1', udpPort: UDP_PORT, tcpPort: TCP_PORT});
+   // devp2p.connectTo({address: '127.0.0.1', udpPort: UDP_PORT, tcpPort: TCP_PORT});
     nodes.push(devp2p);
   }
 
