@@ -1,6 +1,6 @@
 const DevP2PNode = require('./devp2p-node.js');
 const { randomBytes } = require('crypto');
-
+const config = require('../data/config.json');
 const CHAIN_ID = 3;
 
 const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
@@ -13,7 +13,7 @@ const BOOTNODES = require('ethereum-common').bootstrapNodes.filter((node) => {
   };
 });
 
-const STATICNODES = require('../data/config.json').devp2p["static-nodes"].map((node) => {
+const STATICNODES = config.devp2p["static-nodes"].map((node) => {
   const p = node.split("@");
   const q = p[1].split(":");
 
@@ -24,9 +24,14 @@ const STATICNODES = require('../data/config.json').devp2p["static-nodes"].map((n
   return { id, address, port };
 });
 
+
+// TODO: probably not secure and prone to errors. Fix
+const privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
+
+
 const node  = new DevP2PNode({
   chainId: CHAIN_ID,
-  privateKey: randomBytes(32),
+  privateKey,
   bootnodes: BOOTNODES,
   staticnodes: STATICNODES
 });
