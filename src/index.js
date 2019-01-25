@@ -8,6 +8,10 @@ class Murmur {
     this.address = options.address || '/ip4/0.0.0.0/tcp/0';
     this.bootnodes = options.bootnodes || [];
     this.nodes = [];
+
+    if(this.protocols.length != 2){
+      this.isBridge = false;
+    }
     
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
@@ -19,7 +23,7 @@ class Murmur {
 
   async start() {
     if(this.protocols.indexOf("devp2p") > -1){
-      const devp2p = require("./clients.js");
+      const devp2p = require("./client.js");
       devp2p.start();
       devp2p.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
       this.nodes.push(devp2p);
