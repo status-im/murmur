@@ -1,9 +1,8 @@
-const crypto = require('crypto');
 // const elliptic = require("elliptic");
 const {keccak256} = require("eth-lib/lib/hash");
 // const {slice, length, toNumber} = require("eth-lib/lib/bytes");
 const constants = require('./constants');
-const { randomBytes } = require('crypto');
+const { randomBytes, createHash, createECDH, createHmac, createCipheriv, createDecipheriv } = require('crypto-browserify');
 const stripHexPrefix = require('strip-hex-prefix');
 const secp256k1 = require('secp256k1');
 
@@ -58,7 +57,7 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
   let k = Buffer.from([]);
 
   for(let i = 0; i <= reps; i++){
-    const hash = crypto.createHash(hashName);
+    const hash = createHash(hashName);
     hash.update(Buffer.from(counter));
     hash.update(z);
     hash.update(s1);
@@ -72,7 +71,7 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
 const aes128enc = (m, key) => {
   const blSize = 16;
   const iv = randomBytes(blSize);
-  var cipher = crypto.createCipheriv("aes-128-ctr", key, iv);
+  var cipher = createCipheriv("aes-128-ctr", key, iv);
   var firstChunk = cipher.update(m);
   var secondChunk = cipher.final();
   return (Buffer.concat([iv, firstChunk, secondChunk]));
@@ -83,7 +82,7 @@ const aes128dec = (ct, key) => {
   const iv = ct.slice(0, blSize);
   const ciphertext = ct.slice(blSize);
 
-  var cipher = crypto.createDecipheriv("aes-128-ctr", key, iv);
+  var cipher = createDecipheriv("aes-128-ctr", key, iv);
   var firstChunk = cipher.update(ciphertext);
   var secondChunk = cipher.final();
 
@@ -104,7 +103,7 @@ function equalConstTime(b1, b2) {
 }
 
 const decryptAsymmetric = (key, data, cb) => {
-  const privKey = crypto.createECDH('secp256k1');
+  const privKey = createECDH('secp256k1');
   privKey.setPrivateKey(key);
 
   const z = privKey.computeSecret(data.slice(0, 65));
@@ -115,14 +114,14 @@ const decryptAsymmetric = (key, data, cb) => {
   const keyLen = 16;
   const ke = k.slice(0, keyLen);
   let km = k.slice(keyLen);
-  km = crypto.createHash("sha256").update(km).digest();
+  km = createHash("sha256").update(km).digest();
 
   const hashSize = 32;
   const mEnd = data.length - hashSize;
   const ct = data.slice(65, mEnd);
 
   // Message Tag
-  const messageTag = crypto.createHmac('sha256', km).update(ct).update("").digest();
+  const messageTag = createHmac('sha256', km).update(ct).update("").digest();
 
   if (!equalConstTime(messageTag, data.slice(mEnd))){
     return cb("Invalid Message");
@@ -136,7 +135,7 @@ const decryptAsymmetric = (key, data, cb) => {
 };
 
 const encryptAsymmetric = (envelope, pubKey, cb) => {
-  const ephemeralKey = crypto.createECDH('secp256k1');
+  const ephemeralKey = createECDH('secp256k1');
   ephemeralKey.generateKeys();
 
   const z = ephemeralKey.computeSecret(Buffer.from(stripHexPrefix(pubKey), 'hex'));
@@ -147,11 +146,11 @@ const encryptAsymmetric = (envelope, pubKey, cb) => {
   const keyLen = 16;
   const ke = k.slice(0, keyLen);
   let km = k.slice(keyLen);
-  km = crypto.createHash("sha256").update(km).digest();
+  km = createHash("sha256").update(km).digest();
 
   const em = aes128enc(envelope, ke);
 
-  const messageTag = crypto.createHmac('sha256', km).update(em).update("").digest();
+  const messageTag = createHmac('sha256', km).update(em).update("").digest();
 
   const msgObj = Buffer.concat([ephemeralKey.getPublicKey(), em, messageTag]);
 
@@ -169,7 +168,7 @@ const encryptSymmetric = (topic, envelope, options, cb) => {
 
   const salt = randomBytes(constants.aesNonceLength);
 
-  const cipher = crypto.createCipheriv('aes-256-gcm', symKey, salt);
+  const cipher = createCipheriv('aes-256-gcm', symKey, salt);
   const ciphertext = Buffer.concat([cipher.update(envelope, 'hex'), cipher.final()]);
   const tag = cipher.getAuthTag();
 
@@ -188,7 +187,7 @@ const decryptSymmetric = (topic, key, data, cb) => {
   const salt = data.slice(data.length - constants.aesNonceLength);
   const msg = data.slice(0, data.length - 12);
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, salt);
+  const decipher = createDecipheriv('aes-256-gcm', key, salt);
         decipher.setAuthTag(msg.slice(msg.length - 16));
 
   const message =  Buffer.concat([decipher.update(msg.slice(0, msg.length - 16), 'hex'), decipher.final()]);

@@ -1,4 +1,4 @@
-const { randomBytes, pbkdf2 } = require('crypto');
+const { randomBytes, pbkdf2 } = require('crypto-browserify');
 const secp256k1 = require('secp256k1');
 const messages = require('./messages.js');
 const {keccak256} = require("eth-lib/lib/hash");

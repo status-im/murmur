@@ -1,5 +1,5 @@
 const DevP2PNode = require('./devp2p-node.js');
-const { randomBytes } = require('crypto');
+const { randomBytes } = require('crypto-browserify');
 const config = require('../data/config.json');
 const CHAIN_ID = 3;
 
