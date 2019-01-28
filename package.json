@@ -8,7 +8,7 @@
     "babel:node:src": "cross-env BABEL_ENV=node babel src --copy-files --extensions \".js,.ts\" --out-dir dist --source-maps",
     "babel:watch": "run-p babel:watch:*",
     "babel:watch:src": "npm run babel:node:src -- --verbose --watch",
-    "build": "npm-run-all build:*",
+    "build": "npm-run-all build:* webpack",
     "build:node": "npm run babel:node",
     "clean": "rimraf dist",
     "lint": "npm-run-all lint:*",
@@ -24,7 +24,8 @@
     "tsc": "tsc",
     "tslint": "tslint",
     "type-check": "tsc",
-    "type-check:watch": "npm run type-check -- --watch"
+    "type-check:watch": "npm run type-check -- --watch",
+    "webpack": "webpack"
   },
   "repository": {
     "type": "git",
@@ -43,9 +44,12 @@
     "rimraf": "^2.6.2",
     "tape-async": "^2.3.0",
     "tslint": "^5.11.0",
-    "typescript": "^3.2.1"
-  },
-  "dependencies": {
+    "typescript": "^3.2.1",
+    "babel-loader": "^8.0.4",
+    "babel-plugin-dynamic-import-node": "^2.2.0",
+    "babel-plugin-macros": "^2.4.2",
+    "babel-plugin-module-resolver": "^3.1.1",
+    "babel-plugin-transform-react-remove-prop-types": "^0.4.20",
     "@babel/core": "^7.1.6",
     "@babel/plugin-proposal-class-properties": "^7.1.0",
     "@babel/plugin-proposal-decorators": "^7.1.6",
@@ -59,14 +63,11 @@
     "@babel/preset-react": "^7.0.0",
     "@babel/preset-typescript": "^7.1.0",
     "@babel/runtime-corejs2": "^7.1.5",
+    "@types/web3": "^1.0.12"
+  },
+  "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
-    "@types/web3": "^1.0.12",
     "async": "^2.6.1",
-    "babel-loader": "^8.0.4",
-    "babel-plugin-dynamic-import-node": "^2.2.0",
-    "babel-plugin-macros": "^2.4.2",
-    "babel-plugin-module-resolver": "^3.1.1",
-    "babel-plugin-transform-react-remove-prop-types": "^0.4.20",
     "big.js": "^5.2.2",
     "bigint-buffer": "^1.1.2",
     "chalk": "^2.4.1",
@@ -102,7 +103,9 @@
     "secp256k1": "^3.5.2",
     "source-map-support": "^0.5.9",
     "strip-hex-prefix": "^1.0.0",
-    "web3": "^1.0.0-beta.37"
+    "web3": "^1.0.0-beta.37",
+    "webpack": "^4.29.0",
+    "webpack-cli": "^3.2.1"
   },
   "author": "iuri.matias@gmail.com",
   "license": "MIT",
