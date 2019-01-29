@@ -5,6 +5,11 @@
       window.onload = function(){
         const server = new Murmur({
           protocols: ["libp2p"],
+          signalServer: {
+            host: "127.0.0.1",
+            port: 9090,
+            protocol: "ws"
+          },
           bootnodes: []
         });
         server.start();
