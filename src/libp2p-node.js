@@ -39,7 +39,7 @@ const createNode = (address, self) => {
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(messages => {
             conn.getPeerInfo((err, peerInfo) => {
-
+            
             const message = messages[0];
             if(self.tracker.exists(message, 'libp2p')) return;
 
@@ -102,7 +102,7 @@ class LibP2PNode {
       let address;
       
       address = `dns4/${this.signalServer.host}/tcp/${this.signalServer.port}/${this.signalServer.protocol}/p2p-webrtc-star/ipfs/`;
-      
+
       this.node = await createNode(address, this);
       this.node.start();
 
@@ -132,11 +132,11 @@ class LibP2PNode {
     };
 
     if (peerId) {
-      this.node.dialProtocol(peerId, '/shh', cb(msg));
+      this.node.dialProtocol(peerId, '/ethereum/shh/6.0.0', cb(msg));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId].peer;
-        this.node.dialProtocol(peer, '/shh', cb(msg));
+        this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(msg));
       }
     }
   }

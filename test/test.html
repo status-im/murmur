@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <script type="text/javascript" src="../dist/murmur.js"></script>
+    <script type="text/javascript" src="web3.js"></script>
+    <script type="text/javascript">
+    window.onload = function(){
+
+        console.log("Connecting...");
+ 
+        const server = new Murmur({
+          protocols: ["libp2p"],
+          signalServer: { host: '0.0.0.0', port: '9090', protocol: 'ws' },
+          bootnodes: []
+        });
+        server.start();
+
+        setTimeout(async () => {
+          const web3 = new Web3();
+          web3.setProvider(server.provider);
+
+          const symKey = await web3.shh.generateSymKeyFromPassword('ABC');
+          const privKey = await web3.shh.newKeyPair();
+          const msgId = web3.shh.post({
+            symKeyID: symKey,
+            topic: "0x01020304",
+            payload: web3.utils.toHex('HOLA'),
+            powTarget: 0.002,
+            powTime: 1,
+            ttl: 10,
+            sig: privKey
+          });
+
+        }, 10000);
+
+
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Murmur Test Page</h2>
+  </body>
+</html>

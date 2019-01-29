@@ -1,4 +1,4 @@
-const Murmur = require('./dist/murmur');
+const Murmur = require('./src/index');
 const Web3 = require('web3');
 
 const s = new Murmur({

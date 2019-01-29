@@ -41,6 +41,8 @@ class Murmur {
 
     this.manager.setupNodes(this.nodes);
     this.manager.start();
+
+    // TODO: add an OnReady to Murmur
   }
 }
 

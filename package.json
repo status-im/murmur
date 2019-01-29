@@ -1,7 +1,7 @@
 {
   "name": "murmur-client",
   "version": "0.1.4",
-  "main": "./dist/index.js",
+  "main": "./dist/murmur.js",
   "scripts": {
     "babel": "babel",
     "babel:node": "npm-run-all babel:node:*",
@@ -70,6 +70,7 @@
     "async": "^2.6.1",
     "big.js": "^5.2.2",
     "bigint-buffer": "^1.1.2",
+    "browser-process-hrtime": "^1.0.0",
     "chalk": "^2.4.1",
     "commander": "^2.19.0",
     "crypto-browserify": "^3.12.0",
