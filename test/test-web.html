@@ -20,6 +20,17 @@
 
           const symKey = await web3.shh.generateSymKeyFromPassword('ABC');
           const privKey = await web3.shh.newKeyPair();
+          
+          
+          const filters = {
+            symKeyID: symKey,
+            topics: ["0x01020304"],
+          };
+
+          web3.shh.subscribe("messages", filters)
+            .on("data", (data) => { console.log(data); })
+            .on("error", (err) => { console.error(err); });
+          
           const msgId = web3.shh.post({
             symKeyID: symKey,
             topic: "0x01020304",

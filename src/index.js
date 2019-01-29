@@ -30,10 +30,9 @@ class Murmur {
     if(this.protocols.indexOf("libp2p") > -1){
       const LibP2PNode = require('./libp2p-node.js');
       const libp2p = new LibP2PNode({
-        isBrowser: true,
+        isBrowser: typeof window !== 'undefined',
         bootnodes: this.bootnodes,
         signalServer: this.signalServer,
-
       });
       libp2p.start();
       this.nodes.push(libp2p);
