@@ -1,0 +1,17 @@
+<html>
+  <head>
+    <script type="text/javascript" src="dist/murmur.js"></script>
+    <script type="text/javascript">
+      window.onload = function(){
+        const server = new Murmur({
+          protocols: ["libp2p"],
+          bootnodes: []
+        });
+        server.start();
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Murmur Test Page</h2>
+  </body>
+</html>

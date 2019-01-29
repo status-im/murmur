@@ -1,10 +1,10 @@
-const Murmur = require('./src/index');
+const Murmur = require('./dist/murmur');
 const Web3 = require('web3');
 
 const s = new Murmur({
-  protocols: ["devp2p", "libp2p"],
-  isBridge: true
+  protocols: ["libp2p"]
 });
+
 s.start();
 
 const web3 = new Web3(s.provider);
