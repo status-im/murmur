@@ -12,6 +12,7 @@ program
   .option('--no-devp2p', 'Disable DEVP2P')
   .option('--no-libp2p', 'Disable LIBP2P')
   .option('--no-bridge', "Disable bridge between LIBP2P and DEVP2P")
+  .option('--signalserver', "Signal server url (ws://127.0.0.1:9090")
   .parse(process.argv);
 
 let app;
@@ -20,6 +21,8 @@ const WS_PORT =  program.wsport !== undefined ? parseInt(program.wsport, 10) : 8
 const DEVP2P_PORT =  program.devp2pPort !== undefined ? parseInt(program.devp2pPort, 10) : 30303;
 const LIBP2P_PORT =  program.libp2pPort !== undefined ? parseInt(program.libp2pPort, 10) : 0;
 const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
+const SIGNAL_SERVER = new URL(program.SIGNAL_SERVER !== undefined ? program.SIGNAL_SERVER : "ws://127.0.0.1:9090");
+
 
 if(ENABLE_WS){
   app = express();
@@ -35,17 +38,21 @@ if(ENABLE_WS){
   if(program.devp2p){
     const devp2p = require('./client.js');
     devp2p.start();
-   // devp2p.connectTo({address: '127.0.0.1', udpPort: UDP_PORT, tcpPort: TCP_PORT});
     nodes.push(devp2p);
   }
 
+  const signalServer = {
+    host: SIGNAL_SERVER.hostname,
+    port: SIGNAL_SERVER.port,
+    protocol: SIGNAL_SERVER.protocol
+  };
+
   if(program.libp2p){
     const LibP2PNode = require('./libp2p-node.js');
-    const libp2p =  new LibP2PNode();
-    libp2p.start(null, LIBP2P_PORT, 'ws');
+    const libp2p =  new LibP2PNode({signalServer});
+    libp2p.start();
     nodes.push(libp2p);
   }
-
 
   const Manager = require('./manager');
   const _manager = new Manager(provider, {isBridge: IS_BRIDGE});

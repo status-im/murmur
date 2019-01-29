@@ -10,13 +10,20 @@ const libp2p = require('libp2p');
 const BOOTNODES = require('../data/config.json')['libp2p'].bootnodes;
 
 class LibP2PBundle extends libp2p {
-  constructor (peerInfo, bootnodes) {
+  constructor (peerInfo, isBrowser, bootnodes) {
     bootnodes = bootnodes && bootnodes.length ? bootnodes : [];
     if(BOOTNODES && BOOTNODES.length > 0){
       bootnodes = bootnodes.concat(BOOTNODES);
     }
-    
-    const wrtcStar = new WebRTCStar({ id: peerInfo.id });
+
+    let wrtcStar;
+    if(isBrowser){
+      wrtcStar = new WebRTCStar({id: peerInfo.id});
+    } else {
+      const wrtc = require('wrtc');
+      wrtcStar = new WebRTCStar({ id: peerInfo.id, wrtc: wrtc });
+    }
+
     const wsstar = new WebSocketStar({ id: peerInfo.id });
 
     super({

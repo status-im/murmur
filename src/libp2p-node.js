@@ -1,6 +1,6 @@
 const PeerInfo = require('peer-info');
 const PeerId = require('peer-id');
-
+const LibP2PBundle = require('./libp2p-bundle');
 const chalk = require('chalk');
 const pull = require('pull-stream');
 const drain = require('pull-stream/sinks/drain');
@@ -24,15 +24,9 @@ const createNode = (address, self) => {
         reject(err);
       }
 
-      if(self.isBrowser){
-        const LibP2PBundle_Web = require('./libp2p-bundle-web');
-        p2pNode = new LibP2PBundle_Web(peerInfo, self.bootnodes); 
-        address += peerInfo.id.toB58String();
-      } else {
-        const LibP2PBundle_Node = require('./libp2p-bundle-node');
-        p2pNode = new LibP2PBundle_Node(peerInfo, self.bootnodes);     
-      }
-console.log(address);
+      p2pNode = new LibP2PBundle(peerInfo, self.isBrowser, self.bootnodes);     
+      address += peerInfo.id.toB58String();
+
       peerInfo.multiaddrs.add(address);
 
       p2pNode.old_start = p2pNode.start;
@@ -40,7 +34,7 @@ console.log(address);
         p2pNode.old_start(libP2Phello);
       };
 
-      p2pNode.handle('/ethereum/shh/6.0', (protocol, conn) => {
+      p2pNode.handle('/ethereum/shh/6.0.0', (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(messages => {
@@ -104,18 +98,17 @@ class LibP2PNode {
       this.tracker = tracker;
     }
 
-    async start(ip, port, protocol){
-      if(!ip) ip = "0.0.0.0";
-      if(!port) port = "0";
-      
+    async start(){
       let address;
 
-      if(!this.isBrowser){
-        address =  `/ip4/${ip}/tcp/${port}${protocol && '/' + protocol}`;
-      } else {
-        address = `dns4/${this.signalServer.host}/tcp/${this.signalServer.port}/${this.signalServer.protocol}/p2p-webrtc-star/ipfs/`;
-      }
+      this.signalServer = {
+        host: "127.0.0.1",
+        port: 9090,
+        protocol: "ws"
+      };
 
+      address = `dns4/${this.signalServer.host}/tcp/${this.signalServer.port}/${this.signalServer.protocol}/p2p-webrtc-star/ipfs/`;
+      
       this.node = await createNode(address, this);
       this.node.start();
 
@@ -164,5 +157,5 @@ class LibP2PNode {
   }
 }
 
-  
+
 module.exports = LibP2PNode;
