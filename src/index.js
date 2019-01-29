@@ -8,7 +8,7 @@ class Murmur {
     this.signalServer = options.signalServer || {host: "0.0.0.0", port: "9090", protocol: "ws"};
     this.bootnodes = options.bootnodes || [];
     this.nodes = [];
-
+    
     if(this.protocols.length != 2){
       this.isBridge = false;
     }
