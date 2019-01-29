@@ -1,7 +1,8 @@
 {
     "account": "",
     "libp2p": {
-        "bootnodes": []
+        "bootnodes": [
+        ]
     },
     "devp2p": {
         "static-nodes": [

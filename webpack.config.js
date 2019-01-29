@@ -2,7 +2,7 @@ var webpack = require('webpack');
 
 var plugins = [];
 plugins.push(
-    new webpack.IgnorePlugin(/ethereumjs-devp2p/)
+    new webpack.IgnorePlugin(/(ethereumjs-devp2p|libp2p-bundle-node)/)
 );
 
 

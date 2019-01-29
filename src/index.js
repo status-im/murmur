@@ -16,8 +16,7 @@ class Murmur {
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
       isBridge: this.isBridge, 
-      address: this.address, 
-      bootnodes: this.bootnodes
+      address: this.address 
     });
   }
 
@@ -31,7 +30,11 @@ class Murmur {
 
     if(this.protocols.indexOf("libp2p") > -1){
       const LibP2PNode = require('./libp2p-node.js');
-      const libp2p = new LibP2PNode();
+      const libp2p = new LibP2PNode({
+        isBrowser: true,
+        bootnodes: this.bootnodes
+
+      });
       libp2p.start();
       this.nodes.push(libp2p);
     }

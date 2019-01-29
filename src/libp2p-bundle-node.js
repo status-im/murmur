@@ -21,8 +21,12 @@ peerDiscovery: [
 ]
  */
 class LibP2PBundle extends libp2p {
-  constructor (peerInfo) {
-    let bootnodes = BOOTNODES && BOOTNODES.length > 0 ? BOOTNODES : [];
+  constructor (peerInfo, bootnodes) {
+    bootnodes = bootnodes && bootnodes.length ? bootnodes : [];
+    if(BOOTNODES && BOOTNODES.length > 0){
+      bootnodes = bootnodes.concat(BOOTNODES);
+    }
+    
     super({
       modules: {
         transport: [

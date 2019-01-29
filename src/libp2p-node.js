@@ -1,4 +1,3 @@
-const LibP2PBundle = require('./libp2p-bundle');
 const PeerInfo = require('peer-info');
 const PeerId = require('peer-id');
 
@@ -25,7 +24,13 @@ const createNode = (address, self) => {
         reject(err);
       }
       peerInfo.multiaddrs.add(address);
-      p2pNode = new LibP2PBundle(peerInfo);     
+      if(self.isBrowser){
+        const LibP2PBundle_Web = require('./libp2p-bundle-web');
+        p2pNode = new LibP2PBundle_Web(peerInfo, self.bootnodes);     
+      } else {
+        const LibP2PBundle_Node = require('./libp2p-bundle-node');
+        p2pNode = new LibP2PBundle_Node(peerInfo, self.bootnodes);     
+      }
       p2pNode.old_start = p2pNode.start;
       p2pNode.start = () => {
         p2pNode.old_start(libP2Phello);
@@ -84,20 +89,21 @@ class LibP2PNode {
       this.staticnodes = options.staticnodes || [];
       this.trustedPeers = [];
       this.events = new Events();
-      this.messagesTracker = {};
       this.peers = {};
       this.type = "libp2p";
       this.tracker = null;
+      this.isBrowser = options.isBrowser || false;
+
     }
 
     setTracker(tracker){
       this.tracker = tracker;
     }
 
-    async start(ip, port){
+    async start(ip, port, protocol){
       if(!ip) ip = "0.0.0.0";
       if(!port) port = "0";
-      const address =  `/ip4/${ip}/tcp/${port}`;
+      const address =  `/ip4/${ip}/tcp/${port}${protocol && '/' + protocol}`;
       this.node = await createNode(address, this);
       this.node.start();
 

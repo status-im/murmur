@@ -42,7 +42,7 @@ if(ENABLE_WS){
   if(program.libp2p){
     const LibP2PNode = require('./libp2p-node.js');
     const libp2p =  new LibP2PNode();
-    libp2p.start(null, LIBP2P_PORT);
+    libp2p.start(null, LIBP2P_PORT, 'ws');
     nodes.push(libp2p);
   }
 
