@@ -5,7 +5,7 @@ console.log("Connecting...");
  
 const server = new Murmur({
   protocols: ["libp2p"],
-  signalServer: { host: '0.0.0.0', port: '9090', protocol: 'ws' },
+  signalServer: { host: '104.248.64.24', port: '9090', protocol: 'ws' },
   bootnodes: []
 });
 
@@ -22,7 +22,7 @@ setTimeout(
   };
 
   web3.shh.subscribe("messages", filters)
-    .on("data", (data) => { console.log(data); })
+    .on("data", (data) => { console.log(web3.utils.toAscii(data.payload)); })
     .on("error", (err) => { console.error(err); });
 
 }), 10000);
