@@ -44,7 +44,7 @@ if(ENABLE_WS){
   const signalServer = {
     host: SIGNAL_SERVER.hostname,
     port: SIGNAL_SERVER.port,
-    protocol: SIGNAL_SERVER.protocol
+    protocol: SIGNAL_SERVER.protocol.replace(":", "")
   };
 
   if(program.libp2p){

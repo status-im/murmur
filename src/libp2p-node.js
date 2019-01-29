@@ -100,13 +100,7 @@ class LibP2PNode {
 
     async start(){
       let address;
-
-      this.signalServer = {
-        host: "127.0.0.1",
-        port: 9090,
-        protocol: "ws"
-      };
-
+      
       address = `dns4/${this.signalServer.host}/tcp/${this.signalServer.port}/${this.signalServer.protocol}/p2p-webrtc-star/ipfs/`;
       
       this.node = await createNode(address, this);
