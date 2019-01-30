@@ -10,13 +10,14 @@ const config = require('../data/config.json');
 
 let p2pNode;
 
-const libP2Phello = (err) => {
+const libP2Phello = eventEmitter => err => {
   if (err) { throw err; }
   console.log(chalk.yellow(`* libP2P started: ${p2pNode.isStarted()}, listening on:`));
   p2pNode.peerInfo.multiaddrs.forEach((ma) => console.log(chalk.yellow("- " + ma.toString())));
+  eventEmitter.emit('ready');
 };
 
-const createNode = (address, self) => {
+const createNode = (self) => {
   return new Promise(function(resolve, reject) {
 
     const nodeHandler = (err, peerInfo) => {
@@ -24,14 +25,15 @@ const createNode = (address, self) => {
         reject(err);
       }
 
-      p2pNode = new LibP2PBundle(peerInfo, self.isBrowser, self.bootnodes);     
-      address += peerInfo.id.toB58String();
-
-      peerInfo.multiaddrs.add(address);
-
+      p2pNode = new LibP2PBundle(peerInfo, {
+        startWRTC: !self.isBrowser,
+        signalServers: self.signalServers,
+        bootnodes: self.bootnodes
+      });  
+  
       p2pNode.old_start = p2pNode.start;
       p2pNode.start = () => {
-        p2pNode.old_start(libP2Phello);
+        p2pNode.old_start(libP2Phello(self.events));
       };
 
       p2pNode.handle('/ethereum/shh/6.0.0', (protocol, conn) => {
@@ -91,7 +93,7 @@ class LibP2PNode {
       this.type = "libp2p";
       this.tracker = null;
       this.isBrowser = options.isBrowser || false;
-      this.signalServer = options.signalServer;
+      this.signalServers = options.signalServers || [];
     }
 
     setTracker(tracker){
@@ -99,13 +101,8 @@ class LibP2PNode {
     }
 
     async start(){
-      let address;
-      
-      address = `dns4/${this.signalServer.host}/tcp/${this.signalServer.port}/${this.signalServer.protocol}/p2p-webrtc-star/ipfs/`;
-
-      this.node = await createNode(address, this);
+      this.node = await createNode(this);
       this.node.start();
-
       this._startDiscovery();
     }
 

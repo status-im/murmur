@@ -5,7 +5,7 @@ class Murmur {
   constructor(options) {
     this.isBridge = options.isBridge;
     this.protocols = options.protocols || [];
-    this.signalServer = options.signalServer || {host: "0.0.0.0", port: "9090", protocol: "ws"};
+    this.signalServers = options.signalServers || [];
     this.bootnodes = options.bootnodes || [];
     this.nodes = [];
     
@@ -17,6 +17,10 @@ class Murmur {
     this.manager = new Manager(this.provider, {
       isBridge: this.isBridge
     });
+  }
+
+  onReady(cb){
+    this.manager.executeOnReady(cb);
   }
 
   async start() {
@@ -32,16 +36,14 @@ class Murmur {
       const libp2p = new LibP2PNode({
         isBrowser: typeof window !== 'undefined',
         bootnodes: this.bootnodes,
-        signalServer: this.signalServer,
+        signalServers: this.signalServers,
       });
       libp2p.start();
       this.nodes.push(libp2p);
     }
 
     this.manager.setupNodes(this.nodes);
-    this.manager.start();
-
-    // TODO: add an OnReady to Murmur
+    this.manager.start(this.readyCB);
   }
 }
 

@@ -4852,6 +4852,38 @@ libp2p-webrtc-star@~0.15.3:
     stream-to-pull-stream "^1.7.2"
     webrtcsupport "github:ipfs/webrtcsupport"
 
+libp2p-websocket-star-multi@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/libp2p-websocket-star-multi/-/libp2p-websocket-star-multi-0.4.3.tgz#28d5aa4efffb7cf14ac147fc927841a5e275cfd7"
+  integrity sha512-AhiBQABPw0uCRX4T1XzixRvCRXIq3k/IqrXcdRLgBZ8Yi6SXl0l7YwfAv5bO4fjq+jJTj2ypPvyM16ftNnWqBw==
+  dependencies:
+    async "^2.6.1"
+    debug "^4.1.0"
+    libp2p-websocket-star "~0.10.2"
+    mafmt "^6.0.2"
+    multiaddr "^6.0.3"
+    once "^1.4.0"
+
+libp2p-websocket-star@~0.10.2:
+  version "0.10.2"
+  resolved "https://registry.yarnpkg.com/libp2p-websocket-star/-/libp2p-websocket-star-0.10.2.tgz#74df4c651292bf64307d1198746e249827041ea5"
+  integrity sha512-ccjMqy7lrKV6vbTdsm9XOZ+eWt01ZCS3hI2s+I+ZpglnPQNg8z+dGs+8rdl8/hU44Sq3EbmUw0gCxPB/2ZbPlg==
+  dependencies:
+    async "^2.6.1"
+    class-is "^1.1.0"
+    debug "^4.1.1"
+    interface-connection "~0.3.2"
+    libp2p-crypto "~0.16.0"
+    mafmt "^6.0.4"
+    multiaddr "^6.0.3"
+    nanoid "^2.0.0"
+    once "^1.4.0"
+    peer-id "~0.12.2"
+    peer-info "~0.15.1"
+    pull-stream "^3.6.9"
+    socket.io-client "^2.1.1"
+    socket.io-pull-stream "~0.1.5"
+
 libp2p-websocket-star@~0.8.1:
   version "0.8.1"
   resolved "https://registry.yarnpkg.com/libp2p-websocket-star/-/libp2p-websocket-star-0.8.1.tgz#45203a0384c3cc95c3754ef960c92a708ab076e3"
@@ -5512,6 +5544,11 @@ nano-json-stream-parser@^0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/nano-json-stream-parser/-/nano-json-stream-parser-0.1.2.tgz#0cc8f6d0e2b622b479c40d499c46d64b755c6f5f"
   integrity sha1-DMj20OK2IrR5xA1JnEbWS3Vcb18=
+
+nanoid@^2.0.0:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-2.0.1.tgz#deb55cac196e3f138071911dabbc3726eb048864"
+  integrity sha512-k1u2uemjIGsn25zmujKnotgniC/gxQ9sdegdezeDiKdkDW56THUMqlz3urndKCXJxA6yPzSZbXx/QCMe/pxqsA==
 
 nanomatch@^1.2.9:
   version "1.2.13"

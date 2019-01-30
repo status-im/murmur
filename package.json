@@ -94,6 +94,7 @@
     "libp2p-tcp": "^0.13.0",
     "libp2p-webrtc-star": "~0.15.3",
     "libp2p-websocket-star": "~0.8.1",
+    "libp2p-websocket-star-multi": "^0.4.3",
     "libp2p-websockets": "~0.12.0",
     "lru-cache": "^4.1.5",
     "ms": "^2.1.1",
