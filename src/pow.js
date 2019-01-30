@@ -2,7 +2,7 @@ const keccak256 = require('js-sha3').keccak256;
 const rlp = require('rlp-encoding');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
-const hrtime = require('browser-process-hrtime')
+const hrtime = require('browser-process-hrtime');
 
 function hexStringToDecString(s) {
     function add(_x, _y) {

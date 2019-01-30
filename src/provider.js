@@ -172,7 +172,7 @@ class Provider {
 
   shh_newMessageFilter(_payload, _cb) {
     throw new Error("shh_newMessageFilter not implemented yet");
-    cb(null, false);
+    // cb(null, false);
   }
 
   shh_markTrustedPeer(payload, cb){

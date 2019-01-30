@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "main": "./dist/murmur.js",
   "scripts": {
     "babel": "babel",
