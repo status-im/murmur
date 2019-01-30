@@ -44,10 +44,8 @@ if(ENABLE_WS){
 
   if(program.libp2p){
     const LibP2PNode = require('./libp2p-node.js');
-    console.log("A2");
     const libp2p =  new LibP2PNode({signalServers: SIGNAL_SERVER});
     libp2p.start();
-    console.log("B");
     nodes.push(libp2p);
   }
 
