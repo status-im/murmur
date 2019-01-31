@@ -1,7 +1,7 @@
 {
   "name": "murmur-client",
-  "version": "0.2.0",
-  "main": "./dist/murmur.js",
+  "version": "0.2.4",
+  "main": "index.js",
   "scripts": {
     "babel": "babel",
     "babel:node": "npm-run-all babel:node:*",
