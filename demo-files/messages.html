@@ -2,6 +2,7 @@
   <head>
     <script type="text/javascript" src="../dist/murmur.js"></script>
     <script type="text/javascript" src="web3.js"></script>
+    <script type="text/javascript" src="jquery.min.js"></script>
     <script type="text/javascript">
     window.onload = function(){
 
@@ -33,28 +34,39 @@
           };
 
           web3.shh.subscribe("messages", filters)
-            .on("data", (data) => { console.log(web3.utils.toAscii(data.payload)); })
+            .on("data", (data) => {
+              const msg = web3.utils.toAscii(data.payload);
+              console.log(msg);
+              $("#messages").append("<div>" + msg + "</div>")
+            })
             .on("error", (err) => { console.error(err); });
 
           console.log("Wait a few seconds for peers...");
-          setTimeout(() => {
+          $("#sendMsg").click(() => {
+            const msg = $("#msg").val()
             const msgId = web3.shh.post({
               symKeyID: symKey,
               topic: "0x01020304",
-              payload: web3.utils.toHex('Hello 3'),
+              payload: web3.utils.toHex(msg),
               powTarget: 0.002,
               powTime: 1,
               ttl: 10,
               sig: privKey
             });
-          }, 5000);
+          })
         });
-
 
       }
     </script>
   </head>
   <body>
     <h2>Murmur Test Page</h2>
+
+    <input type="text" id="msg" /><button id="sendMsg">send</button>
+
+    <h3>Messages:</h3>
+    <div id="messages"></div>
+
   </body>
 </html>
+
