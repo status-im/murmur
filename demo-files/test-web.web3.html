@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <script type="text/javascript" src="web3.js"></script>
+    <script type="text/javascript">
+    window.onload = function(){
+
+        console.log("Connecting...");
+ (async () => {
+          const web3 = new Web3("ws://localhost:8546");
+
+          await web3.shh.setMinPoW(0.002);
+
+
+          const symKey = await web3.shh.generateSymKeyFromPassword('ABC');
+          const privKey = await web3.shh.newKeyPair();
+          
+          const filters = {
+            symKeyID: symKey,
+            topics: ["0x01020304"],
+          };
+
+          const subs = web3.shh.subscribe("messages", filters)
+            .on("data", (data) => { console.log(web3.utils.toAscii(data.payload)); })
+            .on("error", (err) => { console.error(err); });
+          }
+ )();
+    }
+    </script>
+  </head>
+  <body>
+    <h2>Web3 Test Page</h2>
+  </body>
+</html>

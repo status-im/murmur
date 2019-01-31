@@ -116,6 +116,10 @@ class DevP2PNode {
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)));
 
+    this.rlpx.on('listening', () => {
+      this.events.emit('ready');
+    });
+    
     this.rlpx.on('peer:added', (peer) => {
       const shh = peer.getProtocols()[0];
 

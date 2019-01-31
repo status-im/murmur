@@ -1,4 +1,4 @@
-const { randomBytes, pbkdf2 } = require('crypto');
+const { randomBytes, pbkdf2 } = require('crypto-browserify');
 const secp256k1 = require('secp256k1');
 const messages = require('./messages.js');
 const {keccak256} = require("eth-lib/lib/hash");
@@ -22,6 +22,10 @@ class Manager {
     this.messagesTracker = new MessageTracker();
   }
 
+  executeOnReady(cb){
+    this.onReadyCB = cb;
+  }
+
   setupNodes(nodes){
     this.nodes = nodes;
     nodes.map(n => {
@@ -29,13 +33,21 @@ class Manager {
     });
   }
 
-  start(){
-    this.listenToProviderEvents();
-    this.listenToNodeEvents();
+  start(){   
+     this.listenToProviderEvents();
+     this.listenToNodeEvents();
   }
 
-  getNode(type) {
-    return this.nodes.find(x => x.type === type);
+  getNode(protocol) {
+    return this.nodes.find(x => x.type === protocol);
+  }
+
+  isReady(protocol){
+    this.getNode(protocol).ready = true;
+    if(!this.nodes.filter(x => !x.ready).length){
+      console.log("Murmur ready");
+      if(this.onReadyCB) this.onReadyCB();
+    }
   }
 
   listenToProviderEvents() {
@@ -432,8 +444,18 @@ class Manager {
       this.sendEnvelopeToSubscribers(msg); 
     };
 
-    if(this.getNode('devp2p')) this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
-    if(this.getNode('libp2p')) this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
+    if(this.getNode('devp2p')) {
+      this.getNode('devp2p').events.on('ready', () => { 
+        this.isReady('devp2p');
+      });
+      this.getNode('devp2p').events.emit('ready');
+
+      this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
+    }
+    if(this.getNode('libp2p')) {
+      this.getNode('libp2p').events.on('ready', () => { this.isReady('libp2p'); });
+      this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
+    }
   }
 
 }

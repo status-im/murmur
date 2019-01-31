@@ -5,20 +5,22 @@ class Murmur {
   constructor(options) {
     this.isBridge = options.isBridge;
     this.protocols = options.protocols || [];
-    this.address = options.address || '/ip4/0.0.0.0/tcp/0';
+    this.signalServers = options.signalServers || [];
     this.bootnodes = options.bootnodes || [];
     this.nodes = [];
-
+    
     if(this.protocols.length != 2){
       this.isBridge = false;
     }
     
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
-      isBridge: this.isBridge, 
-      address: this.address, 
-      bootnodes: this.bootnodes
+      isBridge: this.isBridge
     });
+  }
+
+  onReady(cb){
+    this.manager.executeOnReady(cb);
   }
 
   async start() {
@@ -31,13 +33,17 @@ class Murmur {
 
     if(this.protocols.indexOf("libp2p") > -1){
       const LibP2PNode = require('./libp2p-node.js');
-      const libp2p = new LibP2PNode();
+      const libp2p = new LibP2PNode({
+        isBrowser: typeof window !== 'undefined',
+        bootnodes: this.bootnodes,
+        signalServers: this.signalServers,
+      });
       libp2p.start();
       this.nodes.push(libp2p);
     }
 
     this.manager.setupNodes(this.nodes);
-    this.manager.start();
+    this.manager.start(this.readyCB);
   }
 }
 

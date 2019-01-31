@@ -1,55 +1,94 @@
-const Mplex = require('libp2p-mplex');
-const SECIO = require('libp2p-secio');
+const WebRTCStar = require('libp2p-webrtc-star');
+const WebSockets = require('libp2p-websockets');
+const WebSocketStar = require('libp2p-websocket-star');
 const Bootstrap = require('libp2p-bootstrap');
+const Multiplex = require('libp2p-mplex');
+const SPDY = require('libp2p-spdy');
+const SECIO = require('libp2p-secio');
 const libp2p = require('libp2p');
-const KadDHT = require('libp2p-kad-dht');
-const MulticastDNS = require('libp2p-mdns');
+const WebSocketStarMulti = require('libp2p-websocket-star-multi');
 
+const data = require('../data/config.json');
+const BOOTNODES = data['libp2p'].bootnodes;
+const SIGNALSERVERS = data['libp2p'].signalServers;
 
-const TCP = require('libp2p-tcp');
-const WS = require('libp2p-websockets');
-
-const BOOTNODES = require('../data/config.json')['libp2p'].bootnodes;
-
-// TODO: for running in web, change these properties. Consider webrtc too
-/*
- transport: [
-  WS
-],
-peerDiscovery: [
-  Bootstrap
-]
- */
 class LibP2PBundle extends libp2p {
-  constructor (peerInfo) {
-    let bootnodes = BOOTNODES && BOOTNODES.length > 0 ? BOOTNODES : [];
+  constructor (peerInfo, options) {
+    let startWRTC = !!options.startWRTC;
+    let signalServers = options.signalServers && options.signalServers.length ? options.signalServers : [];
+    if(!signalServers.length) signalServers = SIGNALSERVERS && SIGNALSERVERS.length ? SIGNALSERVERS : [];
+
+    let bootnodes = options.bootnodes && options.bootnodes.length ? options.bootnodes : [];
+    if(!bootnodes.length) bootnodes = BOOTNODES && BOOTNODES.length ? BOOTNODES : [];
+
+    let wrtcStar;
+    if(startWRTC){
+      const wrtc = require('wrtc');
+      wrtcStar = new WebRTCStar({ id: peerInfo.id, wrtc: wrtc });
+    } else {
+      wrtcStar = new WebRTCStar({id: peerInfo.id});
+    }
+
+    signalServers.map(addr => {
+      const ma = addr + "/ipfs/" +  peerInfo.id.toB58String();
+      peerInfo.multiaddrs.add(ma);
+    });
+    
+    // TODO: this should work with a single WRTC servers
+    //const wsstar = new WebSocketStar({ id: peerInfo.id });
+
+
+    // TODO: this should work with multiple WRTC servers
+    const wsstar = new WebSocketStarMulti({ 
+      servers: signalServers, 
+      id: peerInfo.id, 
+      ignore_no_online: true
+    });
+
     super({
       modules: {
         transport: [
-          TCP,
-          WS
+          wrtcStar,
+          WebSockets,
+          wsstar
         ],
-        streamMuxer: [Mplex],
+        streamMuxer: [Multiplex, SPDY],
         connEncryption: [SECIO],
-        peerDiscovery: [Bootstrap, MulticastDNS],
-        dht: KadDHT
+        peerDiscovery: [
+          wrtcStar.discovery,
+          wsstar.discovery,
+          Bootstrap
+        ],
       },
       peerInfo,
       config: {
         peerDiscovery: {
+          webRTCStar: {
+            enabled: true
+          },
+          websocketStar: {
+            enabled: true
+          },
           bootstrap: {
-            interval: 2000,
+            interval: 10000,
             enabled: true,
             list: bootnodes
           }
         },
-        dht: {
-          kBucketSize: 20
+        relay: {
+          enabled: true,
+          hop: {
+            enabled: true,
+            active: false
+          }
         },
         EXPERIMENTAL: {
           dht: false,
           pubsub: false
         }
+      },
+      connectionManager: {
+        maxPeers: 15
       }
     });
   }

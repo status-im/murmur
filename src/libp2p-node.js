@@ -1,7 +1,6 @@
-const LibP2PBundle = require('./libp2p-bundle');
 const PeerInfo = require('peer-info');
 const PeerId = require('peer-id');
-
+const LibP2PBundle = require('./libp2p-bundle');
 const chalk = require('chalk');
 const pull = require('pull-stream');
 const drain = require('pull-stream/sinks/drain');
@@ -11,32 +10,38 @@ const config = require('../data/config.json');
 
 let p2pNode;
 
-const libP2Phello = (err) => {
+const libP2Phello = eventEmitter => err => {
   if (err) { throw err; }
   console.log(chalk.yellow(`* libP2P started: ${p2pNode.isStarted()}, listening on:`));
   p2pNode.peerInfo.multiaddrs.forEach((ma) => console.log(chalk.yellow("- " + ma.toString())));
+  eventEmitter.emit('ready');
 };
 
-const createNode = (address, self) => {
+const createNode = (self) => {
   return new Promise(function(resolve, reject) {
 
     const nodeHandler = (err, peerInfo) => {
       if(err) {
         reject(err);
       }
-      peerInfo.multiaddrs.add(address);
-      p2pNode = new LibP2PBundle(peerInfo);     
+
+      p2pNode = new LibP2PBundle(peerInfo, {
+        startWRTC: !self.isBrowser,
+        signalServers: self.signalServers,
+        bootnodes: self.bootnodes
+      });  
+  
       p2pNode.old_start = p2pNode.start;
       p2pNode.start = () => {
-        p2pNode.old_start(libP2Phello);
+        p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/shh', (protocol, conn) => {
+      p2pNode.handle('/ethereum/shh/6.0.0', (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(messages => {
             conn.getPeerInfo((err, peerInfo) => {
-
+            
             const message = messages[0];
             if(self.tracker.exists(message, 'libp2p')) return;
 
@@ -84,23 +89,20 @@ class LibP2PNode {
       this.staticnodes = options.staticnodes || [];
       this.trustedPeers = [];
       this.events = new Events();
-      this.messagesTracker = {};
       this.peers = {};
       this.type = "libp2p";
       this.tracker = null;
+      this.isBrowser = options.isBrowser || false;
+      this.signalServers = options.signalServers || [];
     }
 
     setTracker(tracker){
       this.tracker = tracker;
     }
 
-    async start(ip, port){
-      if(!ip) ip = "0.0.0.0";
-      if(!port) port = "0";
-      const address =  `/ip4/${ip}/tcp/${port}`;
-      this.node = await createNode(address, this);
+    async start(){
+      this.node = await createNode(this);
       this.node.start();
-
       this._startDiscovery();
     }
 
@@ -127,11 +129,11 @@ class LibP2PNode {
     };
 
     if (peerId) {
-      this.node.dialProtocol(peerId, '/shh', cb(msg));
+      this.node.dialProtocol(peerId, '/ethereum/shh/6.0.0', cb(msg));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId].peer;
-        this.node.dialProtocol(peer, '/shh', cb(msg));
+        this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(msg));
       }
     }
   }
@@ -146,5 +148,5 @@ class LibP2PNode {
   }
 }
 
-  
+
 module.exports = LibP2PNode;
