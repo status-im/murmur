@@ -6,7 +6,7 @@
     window.onload = function(){
 
         console.log("Connecting...");
- 
+
         const server = new Murmur({
           protocols: ["libp2p"],
           signalServers: [
@@ -26,7 +26,7 @@
 
           const symKey = await web3.shh.generateSymKeyFromPassword('ABC');
           const privKey = await web3.shh.newKeyPair();
-          
+
           const filters = {
             symKeyID: symKey,
             topics: ["0x01020304"],
@@ -35,13 +35,13 @@
           web3.shh.subscribe("messages", filters)
             .on("data", (data) => { console.log(web3.utils.toAscii(data.payload)); })
             .on("error", (err) => { console.error(err); });
-          
+
           console.log("Wait a few seconds for peers...");
           setTimeout(() => {
             const msgId = web3.shh.post({
               symKeyID: symKey,
               topic: "0x01020304",
-              payload: web3.utils.toHex('Hello'),
+              payload: web3.utils.toHex('Hello 2'),
               powTarget: 0.002,
               powTime: 1,
               ttl: 10,
