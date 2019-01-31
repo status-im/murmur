@@ -10,10 +10,12 @@
         const server = new Murmur({
           protocols: ["libp2p"],
           signalServers: [
-            "/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star",
+//            "/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star",
             "/dns4/104.248.64.24/tcp/443/wss/p2p-webrtc-star"
           ],
-          bootnodes: []
+          bootnodes: [
+
+          ]
         });
 
         server.start();
