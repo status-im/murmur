@@ -4,7 +4,7 @@ class MessageTracker {
   constructor(){
     this.messages = [];
   }
-  
+
   id(message){
     // TODO: probably message id should be calculated once, when a message is received
     return keccak256(message.join(''));
@@ -13,8 +13,9 @@ class MessageTracker {
   exists(message, protocol){
     const msgRecord = this.messages[this.id(message)];
 
-    if(!protocol || !msgRecord) return false;
-    return msgRecord[protocol] !== undefined;
+    return !!msgRecord;
+    //if(!protocol || !msgRecord) return false;
+    //return msgRecord[protocol] !== undefined;
   }
 
   push(message, protocol){
@@ -23,7 +24,7 @@ class MessageTracker {
     this.messages[id][protocol] = message[1]; // TTL
     return id;
   }
-  
+
   isSent(message){
     const id = this.id(message);
     return this.messages[id].sent;
