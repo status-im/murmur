@@ -424,8 +424,10 @@ class Manager {
       let keyId = topicSubscriptions[subscriptionId].symKeyID;
       if (!keyId) {
         keyId = topicSubscriptions[subscriptionId].privateKeyID;
-        let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
-        messages.decryptAsymmetric(key, data, decryptCB);
+        if(this.keys[keyId]){
+          let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
+          messages.decryptAsymmetric(key, data, decryptCB);
+        }
       } else {
         let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
         messages.decryptSymmetric(topic, key, data, decryptCB);
