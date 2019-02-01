@@ -9,7 +9,6 @@ const SHH = require('./shh.js');
 const Events = require('events');
 const ip = require('ip');
 
-
 const devP2PHello = (clientId, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
   console.log(chalk.yellow("- " + clientId.toString('hex') + '@' + ip.address() + ":" + port));
@@ -36,12 +35,11 @@ class DevP2PNode {
   }
 
   start(ip, port) {
-    this.ip = ip;
-    this.port = port;
+    this.ip = "0.0.0.0";
+    this.port = "30303";
 
     this._startDPT();
     this._startRLPX();
-
     if (ip) {
       this.rlpx.listen(port, ip);
       this.dpt.bind(port, ip);
@@ -97,7 +95,7 @@ class DevP2PNode {
   _startRLPX() {
     this.rlpx = new devp2p.RLPx(this.privateKey, {
       dpt: this.dpt,
-      maxPeers: 25,
+      maxPeers: 50,
       capabilities: [
       //  devp2p.ETH.eth63,
       //  devp2p.ETH.eth62,
