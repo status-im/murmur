@@ -14,7 +14,7 @@ class Provider {
   }
 
   sendAsync(payload, callback) {
-    console.log('payload method is ', payload.method);
+    // console.log('payload method is ', payload.method);
 
     let method = this[payload.method].bind(this);
     if (method) {
