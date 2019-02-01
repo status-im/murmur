@@ -9,9 +9,9 @@ const SHH = require('./shh.js');
 const Events = require('events');
 const ip = require('ip');
 
-const devP2PHello = (clientId, port) => {
+const devP2PHello = (id, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
-  console.log(chalk.yellow("- " + clientId.toString('hex') + '@' + ip.address() + ":" + port));
+  console.log(chalk.yellow("- " + id.toString('hex') + '@' + ip.address() + ":" + port));
 };
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
@@ -110,7 +110,7 @@ class DevP2PNode {
       this.rlpx.connect({id: node.id, address: node.address, port: node.port});
     });
 
-    devP2PHello(this.rlpx._clientId, this.port);    
+    devP2PHello(this.rlpx._id, this.port);    
 
     this.rlpx.on('error', (err) => console.error(chalk.red(`RLPx error: ${err.stack || err}`)));
 
