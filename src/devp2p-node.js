@@ -149,9 +149,9 @@ class DevP2PNode {
     });
 
     this.rlpx.on('peer:removed', (peer, reasonCode, disconnectWe) => {
-      const staticNode = this.staticnodes.find(x => x.id.equals(peer._clientId));
+      const staticNode = this.staticnodes.find(x => x.id.equals(peer._remoteId));
       if (staticNode){
-        // Reconnect
+        // TODO: if a static node dies, attempt to reconnect.
         this.rlpx.connect({id: staticNode.id, address: staticNode.address, port: staticNode.port});
       }
 

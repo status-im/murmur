@@ -442,16 +442,13 @@ class Manager {
     const isBridge = this.options.isBridge;
 
     const handleMessage = protocol => msg => {
+      this.messagesTracker.push(msg, protocol);
       if(isBridge) this.getNode(protocol).broadcast(rlp.encode([msg]));
       this.sendEnvelopeToSubscribers(msg); 
     };
 
     if(this.getNode('devp2p')) {
-      this.getNode('devp2p').events.on('ready', () => { 
-        this.isReady('devp2p');
-      });
-      this.getNode('devp2p').events.emit('ready');
-
+      this.getNode('devp2p').events.on('ready', () => { this.isReady('devp2p'); });
       this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
     }
     if(this.getNode('libp2p')) {
