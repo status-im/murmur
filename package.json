@@ -25,7 +25,9 @@
     "tslint": "tslint",
     "type-check": "tsc",
     "type-check:watch": "npm run type-check -- --watch",
-    "webpack": "webpack"
+    "webpack": "webpack",
+    "docker:image": "docker build -t statusteam/murmur .",
+    "docker:push": "docker push statusteam/murmur"
   },
   "repository": {
     "type": "git",
