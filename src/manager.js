@@ -144,7 +144,6 @@ class Manager {
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
-        const p = targetPeer ? msgEnv : [msgEnv];
         const envelope = new Envelope(msgEnv);
 
         const devp2p = this.getNode('devp2p');
@@ -152,16 +151,16 @@ class Manager {
 
         if(targetPeer){
           // Mailserver request
-          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), constants.SHH_P2PREQ);
+          if(devp2p) devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
           // TODO: libp2p mailserver
         } else {
 
           if(devp2p) {
-           devp2p.broadcast(p, null, null, topicToBloom(topic));
+           devp2p.broadcast(envelope);
            this.messagesTracker.push(envelope, 'devp2p');
           }
           if(libp2p){
-            libp2p.broadcast(p, null, null, topicToBloom(topic));
+            libp2p.broadcast(envelope);
             this.messagesTracker.push(envelope, 'libp2p');
           }
 
@@ -446,7 +445,7 @@ class Manager {
 
     const handleMessage = protocol => envelope => {
       this.messagesTracker.push(envelope, protocol);
-      if(isBridge) this.getNode(protocol).broadcast([envelope.message]);
+      if(isBridge) this.getNode(protocol).broadcast(envelope);
       this.sendEnvelopeToSubscribers(envelope); 
     };
 

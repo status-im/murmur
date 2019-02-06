@@ -8,8 +8,7 @@ const SHH = require('./shh.js').default;
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./constants');
 const Events = require('events');
 const ip = require('ip');
-const {topicToBloom} = require('./bloom');
-
+const Envelope = require('./envelope');
 
 const pjson = require('../package.json');
 const os = require('os');
@@ -86,19 +85,19 @@ class DevP2PNode {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
-    msg = rlp.encode(msg);
+  broadcast(input, peerId, code = SHH_MESSAGE) {
+    const message = rlp.encode(input instanceof Envelope ? [input.message] : input);
     
     if(code === null) code = SHH_MESSAGE;
 
     if (peerId){
       let peer = this.peers[peerId];
-      peer.shh.sendMessage(code, msg);
+      peer.shh.sendMessage(code, message);
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
-        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, peer.bloom)) continue;
-        peer.shh.sendMessage(code, msg);
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(message, peer.bloom)) continue;
+        peer.shh.sendMessage(code, message);
       }
     }
   }
@@ -194,7 +193,7 @@ class DevP2PNode {
         this.tracker.push(envelope, 'devp2p');
 
         // Broadcast received message again.
-        this.broadcast([envelope.message], null, SHH_MESSAGE, envelope.bloom);
+        this.broadcast(envelope);
 
         this.events.emit('shh_message', envelope);
       });
