@@ -25,13 +25,24 @@ class DevP2PNode {
     this.staticnodes = options.staticnodes || [];
     this.trustedPeers = [];
     this.events = new Events();
-    this.messagesTracker = {};
     this.peers = {};
+
+    // Candidate for DI
     this.tracker = null;
+    this.bloomManager = null;
   }
 
   setTracker(tracker){
     this.tracker = tracker;
+  }
+
+  setBloomManager(bloomManager){
+    this.bloomManager = bloomManager;
+
+    this.bloomManager.on('updated', () => {
+      // Broadcast bloom filter update
+      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, 3);
+    });
   }
 
   start(ip, port) {
@@ -124,6 +135,13 @@ class DevP2PNode {
       let peerId = peer._hello.id.toString('hex');
 
       this.peers[peerId] = { peer, shh };
+
+      shh.events.on("status", status => {
+        // TODO: don't hardcode minpow
+        //               version           minPow                                  bloom                               isLigthNode,     confirmationsEnbaled, 
+        const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), Buffer.from([]), Buffer.from([]), Buffer.from([1])];
+       this.broadcast(rlp.encode(payload), null, 0);
+      });
 
       shh.events.on('message', (message, peer) => {
         let [expiry, ttl, topic, data, nonce] = message;
