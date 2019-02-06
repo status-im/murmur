@@ -180,7 +180,7 @@ class Manager {
       const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
 
-      this.bloomManager.emit('updateFilter', topics.map(t => Buffer.from(stripHexPrefix(t), 'hex')));
+      this.bloomManager.emit('updateFilter', topics);
 
       for (let topic of topics) {
         if (!this.subscriptions[topic]) {
