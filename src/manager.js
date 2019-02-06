@@ -21,7 +21,7 @@ class Manager {
     this.subscriptions = {};
 
     this.messagesTracker = new MessageTracker();
-    this.bloomManager = new BloomFilterManager();
+    this.bloomManager = new BloomFilterManager(options.ignoreBloomFilters);
   }
 
   executeOnReady(cb){

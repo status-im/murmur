@@ -6,6 +6,7 @@ class Murmur {
     this.isBridge = options.isBridge;
     this.protocols = options.protocols || [];
     this.signalServers = options.signalServers || [];
+    this.ignoreBloomFilters = options.ignoreBloomFilters !== undefined ? options.ignoreBloomFilters : false;
     this.bootnodes = options.bootnodes || [];
     this.nodes = [];
     
@@ -15,7 +16,8 @@ class Murmur {
     
     this.provider = new Provider();
     this.manager = new Manager(this.provider, {
-      isBridge: this.isBridge
+      isBridge: this.isBridge,
+      ignoreBloomFilters: this.ignoreBloomFilters
     });
   }
 
