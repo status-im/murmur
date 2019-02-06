@@ -150,10 +150,10 @@ class LibP2PNode {
       }*/
 
       this.tracker.push(envelope, 'libp2p');
-      // Broadcast received message again.
-      this.broadcast([envelope.message], null, SHH_MESSAGE, envelope.bloom); // TODO: envelope.message and envelope.bloom not necesary. pass envelope as parameter
-
       
+      // Broadcast received message again.
+      this.broadcast(envelope);
+
       this.events.emit('shh_message', envelope);
     });
 
@@ -166,8 +166,8 @@ class LibP2PNode {
     });
   }
 
-  broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
-    msg = rlp.encode(msg);
+  broadcast(input, peerId, code = SHH_MESSAGE) {
+    const message = rlp.encode(input instanceof Envelope ? [input.message] : input);
 
     if(code === null) code = SHH_MESSAGE;
 
@@ -179,14 +179,14 @@ class LibP2PNode {
 
     if (peerId) {
       let peer = this.peers[peerId].peer;
-      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(code, msg));
+      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
-        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, p.bloom)) continue;
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(input.bloom, p.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0', cb(code, msg));
+        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0', cb(code, message));
       }
     }
   }
