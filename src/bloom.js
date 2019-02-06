@@ -5,9 +5,10 @@ const BloomFilterSize = 64;
 const syncAllowance = 10000; // 10seconds
 
 class BloomFilterManager {
-  constructor(){
+  constructor(ignoreBloomFilters){
     this.bloomFilter = Buffer.alloc(BloomFilterSize);
     this.prevFilters = [];
+    this.ignoreBloomFilters = ignoreBloomFilters;
     this.events = new Events();
 
     this.events.on('updateFilter', topics => { 
@@ -24,6 +25,8 @@ class BloomFilterManager {
   }
 
   match(filter){
+    if(this.ignoreBloomFilters) return true;
+
     if(bloomFilterMatch(this.getBloomFilter(), filter)) return true;
 
     const prevFilters = this.prevFilters.slice();
@@ -32,8 +35,16 @@ class BloomFilterManager {
     }
     return false;
   }
+
+  filtersMatch(filter1, filter2){
+    if(this.ignoreBloomFilters) return true;
+
+    return bloomFilterMatch(filter1, filter2);
+  }
   
   updateBloomFilter(topics) {
+    if(this.ignoreBloomFilters) return true;
+
     const topicsBloomFilter = topicsToBloom(topics); 
     if(!this.match(topicsBloomFilter) || this.getBloomFilter().equals(Buffer.from([]))) {
       this.setBloomFilter(bloomFilterAddition(this.bloomFilter, topicsBloomFilter));
@@ -41,6 +52,8 @@ class BloomFilterManager {
   }
 
   setBloomFilter(newFilter){
+    if(this.ignoreBloomFilters) return true;
+
     if(newFilter.length != BloomFilterSize) throw new Error("Invalid bloom size");
     const oldFilter = this.bloomFilter;
     this.bloomFilter = newFilter;

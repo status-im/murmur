@@ -8,7 +8,7 @@ const SHH = require('./shh.js').default;
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./constants');
 const Events = require('events');
 const ip = require('ip');
-const {topicToBloom, bloomFilterMatch} = require('./bloom');
+const {topicToBloom} = require('./bloom');
 
 
 const devP2PHello = (id, port) => {
@@ -68,7 +68,7 @@ class DevP2PNode {
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
-        if(code == SHH_MESSAGE && !bloomFilterMatch(bloom, peer.bloom)) continue;
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, peer.bloom)) continue;
         peer.shh.sendRawMessage(code, msg);
       }
     }

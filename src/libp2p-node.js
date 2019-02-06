@@ -8,7 +8,7 @@ const rlp = require('rlp-encoding');
 const Events = require('events');
 const config = require('../data/config.json');
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
-const {topicToBloom, bloomFilterMatch} = require('./bloom');
+const {topicToBloom} = require('./bloom');
 
 let p2pNode;
 
@@ -43,7 +43,6 @@ const createNode = (self) => {
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
             conn.getPeerInfo((err, peerInfo) => {
-
               const code = message[0].readUInt8(0);
               const payload = rlp.decode(message[1]);
               const peerId = peerInfo.id.toB58String();
@@ -53,10 +52,6 @@ const createNode = (self) => {
               if (code === SHH_BLOOM) p2pNode.emit('bloom_exchange', payload, peerId);
               
               if (code === SHH_MESSAGE) {
-
-
-
-
                 payload.forEach((envelope) => {
                   p2pNode.emit('message', envelope, peerId);
                 });
@@ -168,7 +163,6 @@ class LibP2PNode {
     });
 
     this.node.on("bloom_exchange", (bloom, peerId) => {
-      console.log("RECEIVED BLOOM FROM " + peerId + ": " + bloom.toString('hex'))
       this.peers[peerId].bloom = bloom;
     });
   }
@@ -187,8 +181,8 @@ class LibP2PNode {
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
-        
-        if(code == SHH_MESSAGE && !bloomFilterMatch(bloom, p.bloom)) continue;
+
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, p.bloom)) continue;
 
         this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0', cb(code, msg));
       }
