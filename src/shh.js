@@ -12,14 +12,16 @@ class SHH {
   }
 
   _handleMessage (code, data) {
-    // console.dir("----- whisper handleMessage")
-    // console.dir(code)
     if (code === 0) {
       const payload = rlp.decode(data);
-     // console.dir("whisper status")
-      //console.dir("version: " + payload[0].toString('hex'))
-     // console.dir("something: " + payload[1].toString('hex'))
-      this.sendMessage(code, payload);
+      this.events.emit('status', payload);
+    }
+
+    // Bloom filter
+    if (code === 3) {
+      const payload = rlp.decode(data);
+      console.log("Bloom filter: " + payload[0].toString('hex'));
+      this.events.emit('bloom_exchange', payload);
     }
 
     if (code === constants.message || code === constants.p2pMessage) {

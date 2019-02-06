@@ -91,13 +91,21 @@ class LibP2PNode {
       this.events = new Events();
       this.peers = {};
       this.type = "libp2p";
+
+      // Candidates for DI
       this.tracker = null;
+      this.bloomManager = null;
+      
       this.isBrowser = options.isBrowser || false;
       this.signalServers = options.signalServers || [];
     }
 
     setTracker(tracker){
       this.tracker = tracker;
+    }
+
+    setBloomManager(bloomManager){
+      this.bloomManager = bloomManager;
     }
 
     async start(){
