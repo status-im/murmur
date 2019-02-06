@@ -68,7 +68,7 @@ class DevP2PNode {
   setBloomManager(bloomManager){
     this.bloomManager = bloomManager;
     this.bloomManager.on('updated', () => {
-      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, SHH_BLOOM);
+      this.broadcast(this.bloomManager.getBloomFilter(), null, SHH_BLOOM);
     });
   }
 
@@ -87,16 +87,18 @@ class DevP2PNode {
   }
 
   broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
+    msg = rlp.encode(msg);
+    
     if(code === null) code = SHH_MESSAGE;
 
     if (peerId){
       let peer = this.peers[peerId];
-      peer.shh.sendRawMessage(code, msg);
+      peer.shh.sendMessage(code, msg);
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
         if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, peer.bloom)) continue;
-        peer.shh.sendRawMessage(code, msg);
+        peer.shh.sendMessage(code, msg);
       }
     }
   }
@@ -176,27 +178,25 @@ class DevP2PNode {
         //               version           minPow                           bloom                               isLigthNode,     confirmationsEnbaled, 
         const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
         this.peers[peerId].bloom = status[2];
-        this.broadcast(rlp.encode(payload), null, SHH_STATUS);
+        this.broadcast(payload, null, SHH_STATUS);
       });
 
-      shh.events.on('message', (message, peer) => {
-        let [expiry, ttl, topic, data, nonce] = message;
+      shh.events.on('message', (envelope, peer) => {
 
-        if(this.tracker.exists(message, 'devp2p')) return;
+        if(this.tracker.exists(envelope, 'devp2p')) return;
 
         // Verify if message matches bloom filter
-        const bloom = topicToBloom(topic);
-        if(!this.bloomManager.match(bloom)) return;
+        if(!this.bloomManager.match(envelope.bloom)) return;
 
         // Verifying if old message is sent by trusted peer
-        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)) return;
+        if(this.isTooOld(envelope.expiry) && !this.trustedPeers.includes(peer)) return;
 
-        this.tracker.push(message, 'devp2p');
+        this.tracker.push(envelope, 'devp2p');
 
         // Broadcast received message again.
-        this.broadcast(rlp.encode([message]), null, SHH_MESSAGE, bloom);
+        this.broadcast([envelope.message], null, SHH_MESSAGE, envelope.bloom);
 
-        this.events.emit('shh_message', message);
+        this.events.emit('shh_message', envelope);
       });
 
       const clientId = peer.getHelloMessage().clientId;
