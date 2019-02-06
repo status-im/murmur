@@ -139,10 +139,15 @@ class DevP2PNode {
 
       this.peers[peerId] = { peer, shh };
 
+      shh.events.on("bloom_exchange", bloom => {
+        this.peers[peerId].bloom = bloom;
+      });
+
       shh.events.on("status", status => {
         // TODO: don't hardcode minpow
         //               version           minPow                           bloom                               isLigthNode,     confirmationsEnbaled, 
         const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
+        this.peers[peerId].bloom = status[2];
         this.broadcast(rlp.encode(payload), null, SHH_STATUS);
       });
 
