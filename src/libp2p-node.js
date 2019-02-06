@@ -8,7 +8,8 @@ const rlp = require('rlp-encoding');
 const Events = require('events');
 const config = require('../data/config.json');
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
-const {topicToBloom} = require('./bloom');
+const Envelope = require('./envelope');
+
 
 let p2pNode;
 
@@ -53,7 +54,7 @@ const createNode = (self) => {
               
               if (code === SHH_MESSAGE) {
                 payload.forEach((envelope) => {
-                  p2pNode.emit('message', envelope, peerId);
+                  p2pNode.emit('message', new Envelope(envelope), peerId);
                 });
               }
             });
@@ -102,7 +103,7 @@ class LibP2PNode {
     setBloomManager(bloomManager){
       this.bloomManager = bloomManager;
       this.bloomManager.on('updated', () => {
-        this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, SHH_BLOOM);
+        this.broadcast(this.bloomManager.getBloomFilter(), null, SHH_BLOOM);
       });
     }
 
@@ -125,7 +126,7 @@ class LibP2PNode {
 
       // Sending the status on initial connection
       const payload = [Buffer.from([6]), Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
-      this.broadcast(rlp.encode(payload), peer.id.toB58String(), SHH_STATUS);
+      this.broadcast(payload, peer.id.toB58String(), SHH_STATUS);
     });
 
     this.node.on('peer:disconnect', (peer) => {
@@ -135,27 +136,25 @@ class LibP2PNode {
   }
 
   _processMessages(){
-    this.node.on('message',  (message, peer) => {
-      if(this.tracker.exists(message, 'libp2p')) return;
-
-      let [expiry, ttl, topic, data, nonce] = message; // TODO: Refactor with function to obtain data object
+    this.node.on('message',  (envelope, peer) => {
+      if(this.tracker.exists(envelope, 'libp2p')) return;
 
       // Verify if message matches bloom filter
-      const bloom = topicToBloom(topic);
-      if(!this.bloomManager.match(bloom)) return;
+      if(!this.bloomManager.match(envelope.bloom)) return;
 
       // TODO: for mailservers, inspect peer
       // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
-      /*if(self.isTooOld(expiry) && !PEER_IS_TRUSTED){
+      /*if(self.isTooOld(message.expiry) && !PEER_IS_TRUSTED){
         // console.log("Discarting old envelope");
         return;
       }*/
 
-      this.tracker.push(message, 'libp2p');
+      this.tracker.push(envelope, 'libp2p');
       // Broadcast received message again.
-      this.broadcast(rlp.encode([message]), null, SHH_MESSAGE, bloom);
+      this.broadcast([envelope.message], null, SHH_MESSAGE, envelope.bloom); // TODO: envelope.message and envelope.bloom not necesary. pass envelope as parameter
 
-      this.events.emit('shh_message', message);
+      
+      this.events.emit('shh_message', envelope);
     });
 
     this.node.on("status", (status, peerId) => {
@@ -168,7 +167,10 @@ class LibP2PNode {
   }
 
   broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
+    msg = rlp.encode(msg);
+
     if(code === null) code = SHH_MESSAGE;
+
     const cb = (code, msg) => (err, conn) => {
       code = Buffer.from([code]);
       const payload = rlp.encode([code, msg]);

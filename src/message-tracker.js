@@ -1,38 +1,28 @@
-const {keccak256} = require("eth-lib/lib/hash");
-
 class MessageTracker {
-  constructor(){
+  constructor() {
     this.messages = [];
   }
 
-  id(message){
-    // TODO: probably message id should be calculated once, when a message is received
-    return keccak256(message.join(''));
-  }
-
-  exists(message, protocol){
-    const msgRecord = this.messages[this.id(message)];
+  exists(envelope, protocol) {
+    const msgRecord = this.messages[envelope.id];
 
     return !!msgRecord;
     //if(!protocol || !msgRecord) return false;
     //return msgRecord[protocol] !== undefined;
   }
 
-  push(message, protocol){
-    const id = this.id(message);
-    if(!this.messages[id]) this.messages[id] = {};
-    this.messages[id][protocol] = message[1]; // TTL
-    return id;
+  push(envelope, protocol) {
+    if (!this.messages[envelope.id]) this.messages[envelope.id] = {};
+    this.messages[envelope.id][protocol] = envelope[1]; // TTL
+    return envelope.id;
   }
 
-  isSent(message){
-    const id = this.id(message);
-    return this.messages[id].sent;
+  isSent(envelope) {
+    return this.messages[envelope.id].sent;
   }
 
-  sent(message){
-    const id = this.id(message);
-    this.messages[id].sent = true;
+  sent(envelope) {
+    this.messages[envelope.id].sent = true;
   }
 }
 
