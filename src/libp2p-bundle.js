@@ -1,6 +1,6 @@
 const WebRTCStar = require('libp2p-webrtc-star');
 const WebSockets = require('libp2p-websockets');
-const WebSocketStar = require('libp2p-websocket-star');
+// const WebSocketStar = require('libp2p-websocket-star');
 const Bootstrap = require('libp2p-bootstrap');
 const Multiplex = require('libp2p-mplex');
 const SPDY = require('libp2p-spdy');
@@ -34,11 +34,11 @@ class LibP2PBundle extends libp2p {
       peerInfo.multiaddrs.add(ma);
     });
     
-    // TODO: this should work with a single WRTC servers
+    // This works with a single WRTC server
     //const wsstar = new WebSocketStar({ id: peerInfo.id });
 
 
-    // TODO: this should work with multiple WRTC servers
+    // This works with multiple WRTC servers
     const wsstar = new WebSocketStarMulti({ 
       servers: signalServers, 
       id: peerInfo.id, 
