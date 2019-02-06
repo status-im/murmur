@@ -152,7 +152,7 @@ class Manager {
 
         if(targetPeer){
           // Mailserver request
-          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), 126);
+          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), constants.SHH_P2PREQ);
           // TODO: libp2p mailserver
         } else {
 

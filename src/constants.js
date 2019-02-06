@@ -1,6 +1,7 @@
 const SHH_STATUS = 0;
 const SHH_MESSAGE = 1;
 const SHH_BLOOM = 3;
+const SHH_P2PREQ = 126;
 const SHH_P2PMSG = 127;
 
 
@@ -18,6 +19,7 @@ module.exports = {
     SHH_STATUS,
     SHH_BLOOM,
     SHH_MESSAGE,
+    SHH_P2PREQ,
     SHH_P2PMSG
   
 };
