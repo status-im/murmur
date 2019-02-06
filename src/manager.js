@@ -160,7 +160,7 @@ class Manager {
            this.messagesTracker.push(msgEnv, 'devp2p');
           }
           if(libp2p){
-            libp2p.broadcast(p);
+            libp2p.broadcast(p, null, null, topicToBloom(topic));
             this.messagesTracker.push(msgEnv, 'libp2p');
           }
 

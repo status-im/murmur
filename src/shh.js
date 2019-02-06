@@ -1,11 +1,6 @@
 const rlp = require('rlp-encoding');
 const Events = require('events');
-const constants = require('./constants');
-
-const SHH_STATUS = 0;
-const SHH_MESSAGE = 1;
-const SHH_BLOOM = 3;
-const SHH_P2PMSG = 127;
+const {SHH_BLOOM, SHH_MESSAGE, SHH_P2PMSG, SHH_STATUS} = require('./constants');
 
 class SHH {
   constructor(version, peer, send) {
