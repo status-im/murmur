@@ -24,8 +24,6 @@ class BloomFilterManager {
   }
 
   match(filter){
-    if(this.getBloomFilter().equals(Buffer.from([]))) return true;
-
     if(bloomFilterMatch(this.getBloomFilter(), filter)) return true;
 
     const prevFilters = this.prevFilters.slice();
@@ -63,7 +61,8 @@ class BloomFilterManager {
 }
 
 const bloomFilterMatch = (filter1, filter2) => {
-  if(filter1 === null || filter2 === null) return true;
+  if(!filter1 || !filter2) return true;
+  if(filter1.equals(Buffer.from([])) || filter2.equals(Buffer.from([]))) return true;
   if(filter1.length != BloomFilterSize || filter2.length != BloomFilterSize) throw new Error("Invalid bloom filter size");
   for(let i = 0; i < BloomFilterSize; i++){
     const a = filter1[i];
