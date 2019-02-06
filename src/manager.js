@@ -8,7 +8,7 @@ const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
-const {createBloomFilter} = require('./bloom');
+const {createBloomFilter, topicToBloom} = require('./bloom');
 const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
 
@@ -155,8 +155,9 @@ class Manager {
         } else {
 
           if(devp2p) {
-            devp2p.broadcast(p);
-            this.messagesTracker.push(msgEnv, 'devp2p');
+           devp2p.broadcast(p, null, null, topicToBloom(topic));
+           // devp2p.broadcast(p); 
+           this.messagesTracker.push(msgEnv, 'devp2p');
           }
           if(libp2p){
             libp2p.broadcast(p);

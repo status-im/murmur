@@ -4,11 +4,12 @@ const ms = require('ms');
 const chalk = require('chalk');
 const assert = require('assert');
 const rlp = require('rlp-encoding');
-// const Buffer = require('safe-buffer').Buffer;
-const SHH = require('./shh.js');
+const SHH = require('./shh.js').default;
+const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
 const Events = require('events');
 const ip = require('ip');
-const {topicToBloom} = require('./bloom');
+const {topicToBloom, bloomFilterMatch} = require('./bloom');
+
 
 const devP2PHello = (id, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
@@ -16,11 +17,6 @@ const devP2PHello = (id, port) => {
 };
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
-
-
-const WHISPER_STATUS = 0;
-const WHISPER_MESSAGES = 1;
-const WHISPER_BLOOM = 3;
 
 class DevP2PNode {
 
@@ -45,7 +41,7 @@ class DevP2PNode {
   setBloomManager(bloomManager){
     this.bloomManager = bloomManager;
     this.bloomManager.on('updated', () => {
-      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, WHISPER_BLOOM);
+      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, SHH_BLOOM);
     });
   }
 
@@ -63,13 +59,16 @@ class DevP2PNode {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msg, peerId, code = WHISPER_MESSAGES) {
+  broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
+    if(code === null) code = SHH_MESSAGE;
+
     if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
+        if(code == SHH_MESSAGE && !bloomFilterMatch(bloom, peer.bloom)) continue;
         peer.shh.sendRawMessage(code, msg);
       }
     }
@@ -142,9 +141,9 @@ class DevP2PNode {
 
       shh.events.on("status", status => {
         // TODO: don't hardcode minpow
-        //               version           minPow                                  bloom                               isLigthNode,     confirmationsEnbaled, 
-        const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), Buffer.from([]), Buffer.from([]), Buffer.from([1])];
-        this.broadcast(rlp.encode(payload), null, WHISPER_STATUS);
+        //               version           minPow                           bloom                               isLigthNode,     confirmationsEnbaled, 
+        const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
+        this.broadcast(rlp.encode(payload), null, SHH_STATUS);
       });
 
       shh.events.on('message', (message, peer) => {
@@ -162,7 +161,7 @@ class DevP2PNode {
         this.tracker.push(message, 'devp2p');
 
         // Broadcast received message again.
-        this.broadcast(rlp.encode([message]));
+        this.broadcast(rlp.encode([message]), null, SHH_MESSAGE, bloom);
 
         this.events.emit('shh_message', message);
       });

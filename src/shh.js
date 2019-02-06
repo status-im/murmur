@@ -2,6 +2,10 @@ const rlp = require('rlp-encoding');
 const Events = require('events');
 const constants = require('./constants');
 
+const SHH_STATUS = 0;
+const SHH_MESSAGE = 1;
+const SHH_BLOOM = 3;
+const SHH_P2PMSG = 127;
 
 class SHH {
   constructor(version, peer, send) {
@@ -12,23 +16,14 @@ class SHH {
   }
 
   _handleMessage (code, data) {
-    if (code === 0) {
-      const payload = rlp.decode(data);
-      this.events.emit('status', payload);
-    }
+    const payload = rlp.decode(data);
+
+    if (code === SHH_STATUS) this.events.emit('status', payload);
 
     // Bloom filter
-    if (code === 3) {
-      const payload = rlp.decode(data);
-      console.log("Bloom filter: " + payload[0].toString('hex'));
-      this.events.emit('bloom_exchange', payload);
-    }
+    if (code === SHH_BLOOM) this.events.emit('bloom_exchange', payload);
 
-    if (code === constants.message || code === constants.p2pMessage) {
-      const payload = rlp.decode(data);
-      // console.dir("whisper received message")
-      // console.dir("contains " + payload.length + " envelopes")
-
+    if (code === SHH_MESSAGE || code === SHH_P2PMSG) {
       payload.forEach((envelope) => {
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
         const peer = "enode://" + this.peer._remoteId.toString('hex') + "@" + this.peer._socket._peername.address + ":" + this.peer._socket._peername.port;
@@ -47,4 +42,9 @@ class SHH {
 
 }
 
-module.exports = SHH;
+module.exports = {
+  default: SHH,
+  SHH_BLOOM,
+  SHH_MESSAGE,
+  SHH_STATUS
+};
