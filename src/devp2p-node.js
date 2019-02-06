@@ -8,6 +8,7 @@ const rlp = require('rlp-encoding');
 const SHH = require('./shh.js');
 const Events = require('events');
 const ip = require('ip');
+const {topicToBloom} = require('./bloom');
 
 const devP2PHello = (id, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
@@ -15,6 +16,11 @@ const devP2PHello = (id, port) => {
 };
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
+
+
+const WHISPER_STATUS = 0;
+const WHISPER_MESSAGES = 1;
+const WHISPER_BLOOM = 3;
 
 class DevP2PNode {
 
@@ -38,10 +44,8 @@ class DevP2PNode {
 
   setBloomManager(bloomManager){
     this.bloomManager = bloomManager;
-
     this.bloomManager.on('updated', () => {
-      // Broadcast bloom filter update
-      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, 3);
+      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, WHISPER_BLOOM);
     });
   }
 
@@ -59,7 +63,7 @@ class DevP2PNode {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msg, peerId, code = 1) {
+  broadcast(msg, peerId, code = WHISPER_MESSAGES) {
     if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
@@ -140,7 +144,7 @@ class DevP2PNode {
         // TODO: don't hardcode minpow
         //               version           minPow                                  bloom                               isLigthNode,     confirmationsEnbaled, 
         const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), Buffer.from([]), Buffer.from([]), Buffer.from([1])];
-       this.broadcast(rlp.encode(payload), null, 0);
+        this.broadcast(rlp.encode(payload), null, WHISPER_STATUS);
       });
 
       shh.events.on('message', (message, peer) => {
@@ -148,11 +152,12 @@ class DevP2PNode {
 
         if(this.tracker.exists(message, 'devp2p')) return;
 
+        // Verify if message matches bloom filter
+        const bloom = topicToBloom(topic);
+        if(!this.bloomManager.match(bloom)) return;
+
         // Verifying if old message is sent by trusted peer
-        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
-          // console.log("Discarting old envelope");
-          return;
-        }
+        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)) return;
 
         this.tracker.push(message, 'devp2p');
 

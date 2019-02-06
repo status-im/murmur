@@ -10,10 +10,12 @@ class BloomFilterManager {
     this.prevFilters = [];
     this.events = new Events();
 
-    this.events.on('updateFilter', topics => { this.updateBloomFilter(topics); });
+    this.events.on('updateFilter', topics => { 
+      this.updateBloomFilter(topics); 
+    });
   }
 
-  emit(eventName, ...args){
+  emit(eventName, args){
     this.events.emit(eventName, args);
   }
 
@@ -22,17 +24,20 @@ class BloomFilterManager {
   }
 
   match(filter){
-    if(bloomFilterMatch(this.bloomFilter, filter)) return true;
+    if(this.getBloomFilter().equals(Buffer.from([]))) return true;
+
+    if(bloomFilterMatch(this.getBloomFilter(), filter)) return true;
+
     const prevFilters = this.prevFilters.slice();
     for(let i = 0; i < prevFilters.length; i++){
       if(bloomFilterMatch(prevFilters[i], filter)) return true;
     }
     return false;
   }
-
+  
   updateBloomFilter(topics) {
-    const topicsBloomFilter = topicsToBloom(topics);   
-    if(!this.match(topicsBloomFilter)) {
+    const topicsBloomFilter = topicsToBloom(topics); 
+    if(!this.match(topicsBloomFilter) || this.getBloomFilter().equals(Buffer.from([]))) {
       this.setBloomFilter(bloomFilterAddition(this.bloomFilter, topicsBloomFilter));
     }
   }
@@ -42,9 +47,8 @@ class BloomFilterManager {
     const oldFilter = this.bloomFilter;
     this.bloomFilter = newFilter;
     this.prevFilters.push(oldFilter);
-    
     this.events.emit('updated');
-
+   
     setTimeout(() => { // Delete old bloom filters
       this.prevFilters = this.prevFilters.filter(x => !x.equals(oldFilter));
     }, syncAllowance);
@@ -52,7 +56,8 @@ class BloomFilterManager {
 
   getBloomFilter() {
     const b = Buffer.alloc(BloomFilterSize);
-    b.copy(this.bloomFilter);
+    this.bloomFilter.copy(b);
+    if(b.equals(Buffer.alloc(BloomFilterSize))) return Buffer.from([]);
     return b; 
   }
 }
