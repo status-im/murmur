@@ -5,14 +5,14 @@ const program = require('commander');
 
 program
   .version('0.1.0')
-  .option('--ws', 'Enable the WS-RPC server')
-  .option('--wsport [port]', 'WS-RPC Port (default: 8546)')
-  .option('--devp2p-port [port]', "DEVP2P Port (default: 30303")
-  .option('--libp2p-port [port]', "LIBP2P Port (default: 0")
-  .option('--no-devp2p', 'Disable DEVP2P')
-  .option('--no-libp2p', 'Disable LIBP2P')
-  .option('--no-bridge', "Disable bridge between LIBP2P and DEVP2P")
-  .option('--signal-servers [url]', "Signal server url (ws://127.0.0.1:9090,...")
+  .option('--ws', 'enable the websockets RPC server')
+  .option('--wsport [port]', 'websockets RPC port [default: 8546]')
+  .option('--devp2p-port [port]', "DEVP2P port [default: 30303]")
+  .option('--libp2p-port [port]', "LIBP2P port [default: 0]")
+  .option('--no-devp2p', 'disable DEVP2P')
+  .option('--no-libp2p', 'disable LIBP2P')
+  .option('--no-bridge', "disable bridge between LIBP2P and DEVP2P")
+  .option('--signal-servers [url]', "signal server address [i.e. /ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star,...]")
   .parse(process.argv);
 
 let app;

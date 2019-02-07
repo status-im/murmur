@@ -9,34 +9,82 @@ A Whisper node / client implementation built in Javascript, with the goal of bei
 </p>
 <br />
 
-## Install
-clone the repo via git:
-```
-$ git clone https://github.com/status-im/murmur.git
-```
-And then install the dependencies with `npm`.
-```
-$ cd murmur
-$ npm install
-```
-## Run
-```
-$ ./bin/murmur
-```
-
-Connection to murmur can be done via [web3.js](https://github.com/ethereum/web3.js/) using a `Web3.providers.WebsocketProvider` pointing `ws://localhost:8546`
 
 
-
-It can also be used as a JS library, in conjunction with IPC, however this is  highly experimental and prone to errors at this stage.
-
+## Installation
+To install Murmur for use in node or the browser with require('murmur-client'), run:
 ```
-import Murmur from 'murmur-client';
-const murmur = new Murmur();
-murmur.start();
+npm install murmur-client
 ```
 
-For reference on how to use, please check this [branch](https://github.com/status-im/status-js-desktop/tree/use_murmur) on `status-js-desktop` repository. This readme will be updated once we have a definite implementation for using `murmur` as a dependency of a JS project.
+To install Murmur as a command line program, run:
+```
+npm install -g murmur-client
+```
+Alternatively, you can use `yarn`.
+
+
+## Usage
+
+Murmur can work as a command line application, and as a web3 provider in both browsers and node.js applications:
+
+### Command line application
+
+To start a bridge between LIBP2P and DEVP2P:
+```
+$ murmur
+```
+
+To start a non-bridge DEVP2P client, with websocket support for connecting to whisper using [web3.js](https://github.com/ethereum/web3.js/), with a `Web3.providers.WebsocketProvider` pointing `ws://localhost:8546`.
+```
+$ murmur --ws --no-libp2p --no-bridge
+```
+
+Full list of flags can be seen with `murmur -h`:
+```
+  -V, --version           output the version number
+  --ws                    enable the websockets RPC server
+  --config [path]         use configuration file. (default: provided config)
+  --wsport [port]         websockets RPC port [default: 8546]
+  --devp2p-port [port]    DEVP2P port [default: 30303]
+  --libp2p-port [port]    LIBP2P port [default: 0]
+  --no-devp2p             disable DEVP2P
+  --no-libp2p             disable LIBP2P
+  --no-bridge             disable bridge between LIBP2P and DEVP2P
+  --signal-servers [url]  signal server address [i.e. /ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star,...]
+  -h, --help              output usage information
+```
+
+In the case of `--config`, if this flag is not specified, it will use the default configuration included in the package: `data/config.js`. See this file for structure and valid values accepted.
+
+
+### Web3 provider (in browsers and node.js applications)
+Murmur can also be used as a JS library, since it can act as a valid web3 provider:
+
+```js
+const Murmur = require('murmur-client');
+const Web3 = require('web3');
+
+const server = new Murmur({
+  protocols: ["libp2p"],
+  signalServers: ["/dns4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star"],
+  bootnodes: []
+});
+
+server.start();
+
+server.onReady(async () => {
+  const web3 = new Web3();
+  web3.setProvider(server.provider);
+
+  // Use web3.shh functions here
+});
+
+```
+
+The `Murmur` object accepts an option array where protocols like `"libp2p"` and `"devp2p"` can be specified. It's recommended in the case of clients to only use a single protocol at a time. (It hasn't been tested yet with multiple protocols, since that functionality is intended for bridges). When using `"libp2p"`, the attribute `"signalServers"` is required, containing at least one signal server address. You can use the npm package [`js-libp2p-webrtc-star`](https://github.com/libp2p/js-libp2p-webrtc-star#rendezvous-server-aka-signalling-server) implementation if you do not have a signal server.
+
+This package will be updated to allow specifying bootnodes and static nodes for `"devp2p"`. Currently it will use those specified in the configuration included in the package: `data/config.js`
 
 ## Contribution
 
