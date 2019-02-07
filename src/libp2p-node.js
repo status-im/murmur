@@ -39,7 +39,7 @@ const createNode = (self) => {
         p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/ethereum/shh/6.0.0', (protocol, conn) => {
+      p2pNode.handle('/ethereum/shh/6.0.0/dev-v1', (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
@@ -55,11 +55,11 @@ const createNode = (self) => {
                 
                 if (code === SHH_MESSAGE) {
                   payload.forEach((envelope) => {
-                    p2pNode.emit('message', envelope, peerId);
+                    p2pNode.emit('message', new Envelope(envelope), peerId);
                   });
                 }
               } catch (e) {
-                console.log("Invalid message");
+                console.log("Invalid message: " + e.message);
               }
             });
           })
@@ -188,14 +188,14 @@ class LibP2PNode {
 
     if (peerId) {
       let peer = this.peers[peerId].peer;
-      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(code, message));
+      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
         if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(input.bloom, p.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0', cb(code, message));
+        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
       }
     }
   }
