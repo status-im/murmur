@@ -1,5 +1,5 @@
 const devp2p = require('ethereumjs-devp2p');
-// const LRUCache = require('lru-cache');
+const { randomBytes } = require('crypto-browserify');
 const ms = require('ms');
 const chalk = require('chalk');
 const assert = require('assert');
@@ -11,9 +11,21 @@ const ip = require('ip');
 const {topicToBloom} = require('./bloom');
 
 
+const pjson = require('../package.json');
+const os = require('os');
+
 const devP2PHello = (id, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
   console.log(chalk.yellow("- " + id.toString('hex') + '@' + ip.address() + ":" + port));
+};
+
+const parseENR = (enode) => {
+  const p = enode.split("@");
+  const q = p[1].split(":");
+  const id = Buffer.from(p[0].replace("enode://", ""), "hex");
+  const address = q[0];
+  const port = q[1];
+  return { id, address, port };
 };
 
 const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remotePort}`;
@@ -21,7 +33,8 @@ const getPeerAddr = (peer) => `${peer._socket.remoteAddress}:${peer._socket.remo
 class DevP2PNode {
 
   constructor(options) {
-    this.chainId = options.chainId;
+    if(!options) options = {};
+
     this.privateKey = options.privateKey;
     this.bootnodes = options.bootnodes || [];
     this.staticnodes = options.staticnodes || [];
@@ -32,6 +45,20 @@ class DevP2PNode {
     // Candidate for DI
     this.tracker = null;
     this.bloomManager = null;
+
+    this.type = "devp2p";
+  }
+
+  setConfig(config){
+    this.privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
+    this.staticnodes = config.devp2p["staticNodes"].map(parseENR);
+    this.bootnodes = config.devp2p["bootnodes"].map(parseENR).map(node => {
+      return {
+        address: node.address,
+        udpPort: node.port,
+        tcpPort: node.port
+      };
+    });
   }
 
   setTracker(tracker){
@@ -110,6 +137,7 @@ class DevP2PNode {
     this.rlpx = new devp2p.RLPx(this.privateKey, {
       dpt: this.dpt,
       maxPeers: 50,
+      clientId: Buffer.from(`murmur/v${pjson.version}/${os.platform()}-${os.arch()}/nodejs`),
       capabilities: [
       //  devp2p.ETH.eth63,
       //  devp2p.ETH.eth62,

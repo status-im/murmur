@@ -29,6 +29,9 @@
     "docker:image": "docker build -t statusteam/murmur .",
     "docker:push": "docker push statusteam/murmur"
   },
+  "bin": {
+    "murmur": "./bin/murmur"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/status-im/murmur.git"

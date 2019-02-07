@@ -9,6 +9,7 @@ const libp2p = require('libp2p');
 const WebSocketStarMulti = require('libp2p-websocket-star-multi');
 
 const data = require('../data/config.json');
+
 const BOOTNODES = data['libp2p'].bootnodes;
 const SIGNALSERVERS = data['libp2p'].signalServers;
 

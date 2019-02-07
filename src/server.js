@@ -8,12 +8,13 @@ program
   .option('--ws', 'enable the websockets RPC server')
   .option('--wsport [port]', 'websockets RPC port [default: 8546]')
   .option('--devp2p-port [port]', "DEVP2P port [default: 30303]")
-  .option('--libp2p-port [port]', "LIBP2P port [default: 0]")
+  .option('--libp2p-port [port]', "LIBP2P port [default: random port]")
   .option('--no-devp2p', 'disable DEVP2P')
   .option('--no-libp2p', 'disable LIBP2P')
   .option('--no-bridge', "disable bridge between LIBP2P and DEVP2P")
   .option('--ignore-bloom', "ignore Bloom Filters (forward everything")
   .option('--signal-servers [url]', "signal server address [i.e. /ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star,...]")
+  .option('--config <path>', 'use configuration file. (default: provided config)')
   .parse(process.argv);
 
 let app;
@@ -24,6 +25,15 @@ const LIBP2P_PORT =  program.libp2pPort !== undefined ? parseInt(program.libp2pP
 const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
 const SIGNAL_SERVER = program.signalServers !== undefined ? program.signalServers.split(",") : [];
 const IGNORE_BLOOM = program.ignoreBloom === true;
+
+
+let config;
+if(program.config !== undefined){
+  config = require(program.config);
+} else {
+  config = require("../data/config.json");
+}
+
 
 if(ENABLE_WS){
   app = express();
@@ -37,7 +47,9 @@ if(ENABLE_WS){
   const nodes = [];
 
   if(program.devp2p){
-    const devp2p = require('./client.js');
+    const DevP2PNode = require('./devp2p-node.js');
+    const devp2p = new DevP2PNode();
+    devp2p.setConfig(config);
     devp2p.start();
     nodes.push(devp2p);
   }
@@ -47,6 +59,7 @@ if(ENABLE_WS){
   if(program.libp2p){
     const LibP2PNode = require('./libp2p-node.js');
     const libp2p =  new LibP2PNode({signalServers: SIGNAL_SERVER});
+    libp2p.setConfig(config);
     libp2p.start();
     nodes.push(libp2p);
   }
