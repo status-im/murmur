@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.2.5",
+  "version": "0.3.1",
   "main": "index.js",
   "scripts": {
     "babel": "babel",
@@ -69,9 +69,9 @@
     "tape-async": "^2.3.0",
     "tslint": "^5.11.0",
     "typescript": "^3.2.1",
+    "web3": "^1.0.0-beta.37",
     "webpack": "^4.29.0",
-    "webpack-cli": "^3.2.1",
-    "web3": "^1.0.0-beta.37"
+    "webpack-cli": "^3.2.1"
   },
   "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
@@ -127,8 +127,7 @@
       "email": "info@richardramos.me",
       "homepage": "https://github.com/richard-ramos"
     }
-  ]
-  ,
+  ],
   "license": "MIT",
   "description": ""
 }
