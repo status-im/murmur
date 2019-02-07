@@ -11,6 +11,7 @@ const Uint64BE = require("int64-buffer").Uint64BE;
 const {createBloomFilter, topicToBloom} = require('./bloom');
 const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
+const Envelope = require("./envelope");
 
 class Manager {
 
@@ -143,28 +144,27 @@ class Manager {
         msgEnv.push(encryptedMessage);
         msgEnv.push(nonceBuffer);
 
-        const p = rlp.encode(targetPeer ? msgEnv : [msgEnv]);
-        
+        const envelope = new Envelope(msgEnv);
+
         const devp2p = this.getNode('devp2p');
         const libp2p = this.getNode('libp2p');
 
         if(targetPeer){
           // Mailserver request
-          if(devp2p) devp2p.broadcast(p, targetPeer.toString('hex'), 126);
+          if(devp2p) devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
           // TODO: libp2p mailserver
         } else {
 
           if(devp2p) {
-           devp2p.broadcast(p, null, null, topicToBloom(topic));
-           // devp2p.broadcast(p); 
-           this.messagesTracker.push(msgEnv, 'devp2p');
+           devp2p.broadcast(envelope);
+           this.messagesTracker.push(envelope, 'devp2p');
           }
           if(libp2p){
-            libp2p.broadcast(p, null, null, topicToBloom(topic));
-            this.messagesTracker.push(msgEnv, 'libp2p');
+            libp2p.broadcast(envelope);
+            this.messagesTracker.push(envelope, 'libp2p');
           }
 
-          this.sendEnvelopeToSubscribers(msgEnv);
+          this.sendEnvelopeToSubscribers(envelope);
         }
       
       };
@@ -379,24 +379,22 @@ class Manager {
     });
   }
 
-  sendEnvelopeToSubscribers(message) {
-    if(this.messagesTracker.isSent(message)) return;
+  sendEnvelopeToSubscribers(envelope) {
+    if(this.messagesTracker.isSent(envelope)) return;
 
     //console.dir('received message, sending to subscribers...');
-    let [expiry, ttl, topic, data, nonce] = message;
-
+    
     // Preparing data
-    nonce = (new Uint64BE(new Big(pow.hexStringToDecString(nonce.toString('hex'))))).toBuffer();
+    // TODO: this data preparation could be part of envelope?
+    const nonce = (new Uint64BE(new Big(pow.hexStringToDecString(envelope.nonce.toString('hex'))))).toBuffer();
+    const ttl = (typeof envelope.ttl === 'number') ? envelope.ttl : parseInt(pow.hexStringToDecString(envelope.ttl.toString('hex')), 10);
+    
+    const calculatedPow = pow.calculatePoW(envelope.expiry, ttl, envelope.topic, envelope.data, nonce);
 
-    ttl = (typeof ttl === 'number') ? ttl : parseInt(pow.hexStringToDecString(ttl.toString('hex')), 10);
-    const calculatedPow = pow.calculatePoW(expiry, ttl, topic, data, nonce);
-
-    let topicSubscriptions = this.subscriptions['0x' + topic.toString('hex')];
+    let topicSubscriptions = this.subscriptions['0x' + envelope.topic.toString('hex')];
     if (!topicSubscriptions) {
       return;
     }
-
-    let id = keccak256(message.join(''));
 
     for (let subscriptionId of Object.keys(topicSubscriptions)) {
 
@@ -416,12 +414,12 @@ class Manager {
               // recipientPublicKey: null,
               ttl: ttl,
               timestamp: 1498577270, // TODO: correct value
-              topic: "0x" + topic.toString('hex'),
+              topic: "0x" + envelope.topic.toString('hex'),
               payload: "0x" + decrypted.payload.toString('hex'),
               //padding: decrypted.padding.toString('hex'),
               padding: null,
               pow: calculatedPow,
-              hash: id
+              hash: envelope.id
             }
           }
         });
@@ -433,25 +431,22 @@ class Manager {
         keyId = topicSubscriptions[subscriptionId].privateKeyID;
         if(this.keys[keyId]){
           let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
-          messages.decryptAsymmetric(key, data, decryptCB);
+          messages.decryptAsymmetric(key, envelope.data, decryptCB);
         }
       } else {
         let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
-        messages.decryptSymmetric(topic, key, data, decryptCB);
+        messages.decryptSymmetric(envelope.topic, key, envelope.data, decryptCB);
       }
-
     }
-    // console.dir(message)
-    // TODO: send to clients subscribed to this message topic
   }
 
   listenToNodeEvents() {
     const isBridge = this.options.isBridge;
 
-    const handleMessage = protocol => msg => {
-      this.messagesTracker.push(msg, protocol);
-      if(isBridge) this.getNode(protocol).broadcast(rlp.encode([msg]));
-      this.sendEnvelopeToSubscribers(msg); 
+    const handleMessage = protocol => envelope => {
+      this.messagesTracker.push(envelope, protocol);
+      if(isBridge) this.getNode(protocol).broadcast(envelope);
+      this.sendEnvelopeToSubscribers(envelope); 
     };
 
     if(this.getNode('devp2p')) {

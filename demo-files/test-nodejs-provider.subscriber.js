@@ -5,7 +5,7 @@ console.log("Connecting...");
  
 const server = new Murmur({
   protocols: ["libp2p"],
-  signalServer: { host: '104.248.64.24', port: '9090', protocol: 'ws' },
+  signalServer: ["/dns4/web-bridge.status.im/tcp/443/wss/p2p-webrtc-star"],
   bootnodes: []
 });
 
@@ -13,12 +13,13 @@ server.start();
 
 setTimeout(
 (async() => {
+  const channelName = "mytest";
   const web3 = new Web3(server.provider);
-  const symKey = await web3.shh.generateSymKeyFromPassword('ABC');
-
+  const symKey = await web3.shh.generateSymKeyFromPassword(channelName);
+  
   const filters = {
     symKeyID: symKey,
-    topics: ["0x01020304"],
+    topics: [Web3.utils.sha3(channelName).slice(0, 10)],
   };
 
   web3.shh.subscribe("messages", filters)

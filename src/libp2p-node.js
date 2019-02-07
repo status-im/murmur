@@ -8,7 +8,8 @@ const rlp = require('rlp-encoding');
 const Events = require('events');
 const config = require('../data/config.json');
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
-const {topicToBloom} = require('./bloom');
+const Envelope = require('./envelope');
+
 
 let p2pNode;
 
@@ -38,7 +39,7 @@ const createNode = (self) => {
         p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/ethereum/shh/6.0.0', (protocol, conn) => {
+      p2pNode.handle('/ethereum/shh/6.0.0/dev-v1', (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
@@ -54,11 +55,11 @@ const createNode = (self) => {
                 
                 if (code === SHH_MESSAGE) {
                   payload.forEach((envelope) => {
-                    p2pNode.emit('message', envelope, peerId);
+                    p2pNode.emit('message', new Envelope(envelope), peerId);
                   });
                 }
               } catch (e) {
-                console.log("Invalid message");
+                console.log("Invalid message: " + e.message);
               }
             });
           })
@@ -111,7 +112,7 @@ class LibP2PNode {
     setBloomManager(bloomManager){
       this.bloomManager = bloomManager;
       this.bloomManager.on('updated', () => {
-        this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, SHH_BLOOM);
+        this.broadcast(this.bloomManager.getBloomFilter(), null, SHH_BLOOM);
       });
     }
 
@@ -134,7 +135,7 @@ class LibP2PNode {
 
       // Sending the status on initial connection
       const payload = [Buffer.from([6]), Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
-      this.broadcast(rlp.encode(payload), peer.id.toB58String(), SHH_STATUS);
+      this.broadcast(payload, peer.id.toB58String(), SHH_STATUS);
     });
 
     this.node.on('peer:disconnect', (peer) => {
@@ -144,27 +145,25 @@ class LibP2PNode {
   }
 
   _processMessages(){
-    this.node.on('message',  (message, peer) => {
-      if(this.tracker.exists(message, 'libp2p')) return;
-
-      let [expiry, ttl, topic, data, nonce] = message; // TODO: Refactor with function to obtain data object
+    this.node.on('message',  (envelope, peer) => {
+      if(this.tracker.exists(envelope, 'libp2p')) return;
 
       // Verify if message matches bloom filter
-      const bloom = topicToBloom(topic);
-      if(!this.bloomManager.match(bloom)) return;
+      if(!this.bloomManager.match(envelope.bloom)) return;
 
       // TODO: for mailservers, inspect peer
       // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
-      /*if(self.isTooOld(expiry) && !PEER_IS_TRUSTED){
+      /*if(self.isTooOld(message.expiry) && !PEER_IS_TRUSTED){
         // console.log("Discarting old envelope");
         return;
       }*/
 
-      this.tracker.push(message, 'libp2p');
+      this.tracker.push(envelope, 'libp2p');
+      
       // Broadcast received message again.
-      this.broadcast(rlp.encode([message]), null, SHH_MESSAGE, bloom);
+      this.broadcast(envelope);
 
-      this.events.emit('shh_message', message);
+      this.events.emit('shh_message', envelope);
     });
 
     this.node.on("status", (status, peerId) => {
@@ -176,8 +175,11 @@ class LibP2PNode {
     });
   }
 
-  broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
+  broadcast(input, peerId, code = SHH_MESSAGE) {
+    const message = rlp.encode(input instanceof Envelope ? [input.message] : input);
+
     if(code === null) code = SHH_MESSAGE;
+
     const cb = (code, msg) => (err, conn) => {
       code = Buffer.from([code]);
       const payload = rlp.encode([code, msg]);
@@ -186,14 +188,14 @@ class LibP2PNode {
 
     if (peerId) {
       let peer = this.peers[peerId].peer;
-      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0', cb(code, msg));
+      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
-        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, p.bloom)) continue;
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(input.bloom, p.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0', cb(code, msg));
+        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
       }
     }
   }
