@@ -4,9 +4,7 @@
         "signalServers": [
             "/dns4/web-bridge.status.im/tcp/443/wss/p2p-webrtc-star"
         ],
-        "bootnodes": [
-            
-        ]
+        "bootnodes": []
     },
     "devp2p": {
         "bootnodes": [
@@ -17,7 +15,7 @@
             "enode://5395aab7833f1ecb671b59bf0521cf20224fe8162fc3d2675de4ee4d5636a75ec32d13268fc184df8d1ddfa803943906882da62a4df42d4fccf6d17808156a87@206.189.243.57:443", 
             "enode://ebefab39b69bbbe64d8cd86be765b3be356d8c4b24660f65d493143a0c44f38c85a257300178f7845592a1b0332811542e9a58281c835babdd7535babb64efc1@35.202.99.224:443"   
         ],
-        "static-nodes": [
+        "staticNodes": [
             "enode://da61e9eff86a56633b635f887d8b91e0ff5236bbc05b8169834292e92afb92929dcf6efdbf373a37903da8fe0384d5a0a8247e83f1ce211aa429200b6d28c548@47.91.156.93:30504",
             "enode://c42f368a23fa98ee546fd247220759062323249ef657d26d357a777443aec04db1b29a3a22ef3e7c548e18493ddaf51a31b0aed6079bd6ebe5ae838fcfaf3a49@206.189.243.162:30504",
             "enode://7de99e4cb1b3523bd26ca212369540646607c721ad4f3e5c821ed9148150ce6ce2e72631723002210fac1fd52dfa8bbdf3555e05379af79515e1179da37cc3db@35.188.19.210:30504",
@@ -52,9 +50,6 @@
             "enode://2b01955d7e11e29dce07343b456e4e96c081760022d1652b1c4b641eaf320e3747871870fa682e9e9cfb85b819ce94ed2fee1ac458904d54fd0b97d33ba2c4a4@206.189.240.70:443", 
             "enode://0d9d65fcd5592df33ed4507ce862b9c748b6dbd1ea3a1deb94e3750052760b4850aa527265bbaf357021d64d5cc53c02b410458e732fafc5b53f257944247760@167.99.18.187:443", 
             "enode://d85b87dbcd251ca21bdc4085d938e54a9af3538dd6696e2b99ec9c4694bc3eb8c6689d191129f3d9ee67aac8f0174b089143e638369245c88b9b68b9291216ff@35.224.150.136:443"
-                
-        
-        
         ]
     }
 }

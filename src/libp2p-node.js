@@ -65,7 +65,7 @@ const createNode = (self) => {
 
     // TODO: probably not secure and prone to errors. Fix
     //       also, what's the diff between createFromHexString and createFromPrivKey?
-    const privateKey = config.account ? Buffer.from(config.account, "hex") : null;
+    const privateKey = self.privateKey ? Buffer.from(self.privateKey, "hex") : null;
     if(privateKey){
       const peerId = PeerId.createFromHexString(privateKey);
       PeerInfo.create(peerId, nodeHandler);
@@ -93,6 +93,11 @@ class LibP2PNode {
       
       this.isBrowser = options.isBrowser || false;
       this.signalServers = options.signalServers || [];
+    }
+
+    setConfig(config){
+      this.bootnodes = config.bootnodes;
+      this.privateKey = config.account ? Buffer.from(config.account, "hex") : null;
     }
 
     setTracker(tracker){
