@@ -8,9 +8,9 @@ const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
-const bloom = require('./bloom');
+const {createBloomFilter, topicToBloom} = require('./bloom');
+const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
-
 
 class Manager {
 
@@ -19,7 +19,9 @@ class Manager {
     this.options = options;
     this.keys = {};
     this.subscriptions = {};
+
     this.messagesTracker = new MessageTracker();
+    this.bloomManager = new BloomFilterManager(options.ignoreBloomFilters);
   }
 
   executeOnReady(cb){
@@ -30,6 +32,7 @@ class Manager {
     this.nodes = nodes;
     nodes.map(n => {
       n.setTracker(this.messagesTracker);
+      n.setBloomManager(this.bloomManager);
     });
   }
 
@@ -152,11 +155,12 @@ class Manager {
         } else {
 
           if(devp2p) {
-            devp2p.broadcast(p);
-            this.messagesTracker.push(msgEnv, 'devp2p');
+           devp2p.broadcast(p, null, null, topicToBloom(topic));
+           // devp2p.broadcast(p); 
+           this.messagesTracker.push(msgEnv, 'devp2p');
           }
           if(libp2p){
-            libp2p.broadcast(p);
+            libp2p.broadcast(p, null, null, topicToBloom(topic));
             this.messagesTracker.push(msgEnv, 'libp2p');
           }
 
@@ -176,6 +180,9 @@ class Manager {
     this.provider.events.on('subscribe', (payload, cb) => {
       const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
+
+      this.bloomManager.emit('updateFilter', topics);
+
       for (let topic of topics) {
         if (!this.subscriptions[topic]) {
           this.subscriptions[topic] = {};
@@ -222,7 +229,7 @@ class Manager {
 
       let publicKey = null;
 
-      const payload = rlp.encode([message.from, message.to, bloom.createBloomFilter(message), message.limit, null, 1]);
+      const payload = rlp.encode([message.from, message.to, createBloomFilter(message), message.limit, null, 1]);
 
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);

@@ -4,10 +4,12 @@ const ms = require('ms');
 const chalk = require('chalk');
 const assert = require('assert');
 const rlp = require('rlp-encoding');
-// const Buffer = require('safe-buffer').Buffer;
-const SHH = require('./shh.js');
+const SHH = require('./shh.js').default;
+const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./constants');
 const Events = require('events');
 const ip = require('ip');
+const {topicToBloom} = require('./bloom');
+
 
 const devP2PHello = (id, port) => {
   console.log(chalk.yellow("* devP2P started: true, listening on:"));
@@ -25,13 +27,22 @@ class DevP2PNode {
     this.staticnodes = options.staticnodes || [];
     this.trustedPeers = [];
     this.events = new Events();
-    this.messagesTracker = {};
     this.peers = {};
+
+    // Candidate for DI
     this.tracker = null;
+    this.bloomManager = null;
   }
 
   setTracker(tracker){
     this.tracker = tracker;
+  }
+
+  setBloomManager(bloomManager){
+    this.bloomManager = bloomManager;
+    this.bloomManager.on('updated', () => {
+      this.broadcast(rlp.encode(this.bloomManager.getBloomFilter()), null, SHH_BLOOM);
+    });
   }
 
   start(ip, port) {
@@ -48,13 +59,16 @@ class DevP2PNode {
     this.addBootnodes(this.bootnodes);
   }
 
-  broadcast(msg, peerId, code = 1) {
+  broadcast(msg, peerId, code = SHH_MESSAGE, bloom = null) {
+    if(code === null) code = SHH_MESSAGE;
+
     if (peerId){
       let peer = this.peers[peerId];
       peer.shh.sendRawMessage(code, msg);
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(bloom, peer.bloom)) continue;
         peer.shh.sendRawMessage(code, msg);
       }
     }
@@ -125,21 +139,34 @@ class DevP2PNode {
 
       this.peers[peerId] = { peer, shh };
 
+      shh.events.on("bloom_exchange", bloom => {
+        this.peers[peerId].bloom = bloom;
+      });
+
+      shh.events.on("status", status => {
+        // TODO: don't hardcode minpow
+        //               version           minPow                           bloom                               isLigthNode,     confirmationsEnbaled, 
+        const payload = [status[0], Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
+        this.peers[peerId].bloom = status[2];
+        this.broadcast(rlp.encode(payload), null, SHH_STATUS);
+      });
+
       shh.events.on('message', (message, peer) => {
         let [expiry, ttl, topic, data, nonce] = message;
 
         if(this.tracker.exists(message, 'devp2p')) return;
 
+        // Verify if message matches bloom filter
+        const bloom = topicToBloom(topic);
+        if(!this.bloomManager.match(bloom)) return;
+
         // Verifying if old message is sent by trusted peer
-        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)){
-          // console.log("Discarting old envelope");
-          return;
-        }
+        if(this.isTooOld(expiry) && !this.trustedPeers.includes(peer)) return;
 
         this.tracker.push(message, 'devp2p');
 
         // Broadcast received message again.
-        this.broadcast(rlp.encode([message]));
+        this.broadcast(rlp.encode([message]), null, SHH_MESSAGE, bloom);
 
         this.events.emit('shh_message', message);
       });

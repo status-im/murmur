@@ -12,6 +12,7 @@ program
   .option('--no-devp2p', 'disable DEVP2P')
   .option('--no-libp2p', 'disable LIBP2P')
   .option('--no-bridge', "disable bridge between LIBP2P and DEVP2P")
+  .option('--ignore-bloom', "ignore Bloom Filters (forward everything")
   .option('--signal-servers [url]', "signal server address [i.e. /ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star,...]")
   .parse(process.argv);
 
@@ -22,6 +23,7 @@ const DEVP2P_PORT =  program.devp2pPort !== undefined ? parseInt(program.devp2pP
 const LIBP2P_PORT =  program.libp2pPort !== undefined ? parseInt(program.libp2pPort, 10) : 0;
 const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
 const SIGNAL_SERVER = program.signalServers !== undefined ? program.signalServers.split(",") : [];
+const IGNORE_BLOOM = program.ignoreBloom === true;
 
 if(ENABLE_WS){
   app = express();
@@ -50,9 +52,14 @@ if(ENABLE_WS){
   }
 
   const Manager = require('./manager');
-  const _manager = new Manager(provider, {isBridge: IS_BRIDGE});
+  const _manager = new Manager(provider, {
+    isBridge: IS_BRIDGE,
+    ignoreBloomFilters: IGNORE_BLOOM
+  });
   _manager.setupNodes(nodes);
   _manager.start();
+
+  if(IGNORE_BLOOM) console.log(chalk.yellow('* Bloom filters ignored'));
 
   if(!ENABLE_WS) return;
   
