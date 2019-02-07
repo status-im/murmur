@@ -43,18 +43,22 @@ const createNode = (self) => {
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
             conn.getPeerInfo((err, peerInfo) => {
-              const code = message[0].readUInt8(0);
-              const payload = rlp.decode(message[1]);
-              const peerId = peerInfo.id.toB58String();
+              try {
+                const code = message[0].readUInt8(0);
+                const payload = rlp.decode(message[1]);
+                const peerId = peerInfo.id.toB58String();
 
-              if (code === SHH_STATUS) p2pNode.emit('status', payload, peerId);
-              
-              if (code === SHH_BLOOM) p2pNode.emit('bloom_exchange', payload, peerId);
-              
-              if (code === SHH_MESSAGE) {
-                payload.forEach((envelope) => {
-                  p2pNode.emit('message', envelope, peerId);
-                });
+                if (code === SHH_STATUS) p2pNode.emit('status', payload, peerId);
+                
+                if (code === SHH_BLOOM) p2pNode.emit('bloom_exchange', payload, peerId);
+                
+                if (code === SHH_MESSAGE) {
+                  payload.forEach((envelope) => {
+                    p2pNode.emit('message', envelope, peerId);
+                  });
+                }
+              } catch (e) {
+                console.log("Invalid message");
               }
             });
           })
