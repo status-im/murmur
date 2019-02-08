@@ -24,7 +24,7 @@ const DEVP2P_PORT =  program.devp2pPort !== undefined ? parseInt(program.devp2pP
 const LIBP2P_PORT =  program.libp2pPort !== undefined ? parseInt(program.libp2pPort, 10) : 0;
 const IS_BRIDGE = program.libp2p && program.devp2p && program.bridge;
 const SIGNAL_SERVER = program.signalServers !== undefined ? program.signalServers.split(",") : [];
-const IGNORE_BLOOM = program.ignoreBloom === true;
+const IGNORE_BLOOM = program.ignoreBloom === true || IS_BRIDGE;
 
 
 let config;

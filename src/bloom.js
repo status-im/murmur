@@ -36,10 +36,10 @@ class BloomFilterManager {
     return false;
   }
 
-  filtersMatch(filter1, filter2){
+  filtersMatch(base, searchBloom){
     if(this.ignoreBloomFilters) return true;
 
-    return bloomFilterMatch(filter1, filter2);
+    return bloomFilterMatch(base, searchBloom);
   }
   
   updateBloomFilter(topics) {

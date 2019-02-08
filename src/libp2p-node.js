@@ -193,7 +193,7 @@ class LibP2PNode {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
-        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(input.bloom, p.bloom)) continue;
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(p.bloom, input.bloom)) continue;
 
         this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
       }

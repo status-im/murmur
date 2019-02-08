@@ -96,7 +96,7 @@ class DevP2PNode {
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let peer = this.peers[peerId];
-        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(message, peer.bloom)) continue;
+        if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(peer.bloom, input.bloom)) continue;
         peer.shh.sendMessage(code, message);
       }
     }
