@@ -151,17 +151,18 @@ class LibP2PNode {
       // Verify if message matches bloom filter
       if(!this.bloomManager.match(envelope.bloom)) return;
 
-      // TODO: for mailservers, inspect peer
-      // Verifying if old message is sent by trusted peer by inspecting peerInfo.multiaddrs
-      /*if(self.isTooOld(message.expiry) && !PEER_IS_TRUSTED){
-        // console.log("Discarting old envelope");
-        return;
-      }*/
+      // Verifying if old message is sent by trusted peer
+      // @TODO: for mailservers inspect peer
+      // const trustedPeer = this.trustedPeers.includes(peer); 
+      const tooOld = this.isTooOld(envelope.expiry);
+
+      // Discarding old envelope unless sent by trusted peer
+      // if(tooOld && !trustedPeer) return; 
 
       this.tracker.push(envelope, 'libp2p');
       
       // Broadcast received message again.
-      this.broadcast(envelope);
+      if(!tooOld) this.broadcast(envelope);
 
       this.events.emit('shh_message', envelope);
     });

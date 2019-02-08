@@ -188,12 +188,15 @@ class DevP2PNode {
         if(!this.bloomManager.match(envelope.bloom)) return;
 
         // Verifying if old message is sent by trusted peer
-        if(this.isTooOld(envelope.expiry) && !this.trustedPeers.includes(peer)) return;
+        const trustedPeer = this.trustedPeers.includes(peer);
+        const tooOld = this.isTooOld(envelope.expiry);
+
+        if(tooOld && !trustedPeer) return;
 
         this.tracker.push(envelope, 'devp2p');
 
         // Broadcast received message again.
-        this.broadcast(envelope);
+        if(!tooOld) this.broadcast(envelope);
 
         this.events.emit('shh_message', envelope);
       });
