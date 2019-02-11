@@ -13,7 +13,7 @@ server.start();
 
 setTimeout(
 (async() => {
-  const channelName = "mytest";
+  const channelName = "status-js";
   const web3 = new Web3(server.provider);
   const symKey = await web3.shh.generateSymKeyFromPassword(channelName);
   

@@ -1,14 +1,13 @@
 const { randomBytes, pbkdf2 } = require('crypto-browserify');
 const secp256k1 = require('secp256k1');
 const messages = require('./messages.js');
-const {keccak256} = require("eth-lib/lib/hash");
 const rlp = require('rlp-encoding');
 const stripHexPrefix = require('strip-hex-prefix');
 const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
-const {createBloomFilter, topicToBloom} = require('./bloom');
+const {createBloomFilter} = require('./bloom');
 const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
 const Envelope = require("./envelope");

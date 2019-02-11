@@ -8,7 +8,8 @@
     "babel:node:src": "cross-env BABEL_ENV=node babel src --copy-files --extensions \".js,.ts\" --out-dir dist --source-maps",
     "babel:watch": "run-p babel:watch:*",
     "babel:watch:src": "npm run babel:node:src -- --verbose --watch",
-    "build": "npm-run-all build:* webpack",
+    "build": "npm-run-all build:* webpack-dev",
+    "build-production": "npm-run-all build:* webpack-prod",
     "build:node": "npm run babel:node",
     "clean": "rimraf dist",
     "lint": "npm-run-all lint:*",
@@ -25,7 +26,8 @@
     "tslint": "tslint",
     "type-check": "tsc",
     "type-check:watch": "npm run type-check -- --watch",
-    "webpack": "webpack",
+    "webpack-dev": "webpack --config webpack.dev.js",
+    "webpack-prod": "webpack --config webpack.prod.js",
     "docker:image": "docker build -t statusteam/murmur .",
     "docker:push": "docker push statusteam/murmur"
   },
@@ -71,7 +73,8 @@
     "typescript": "^3.2.1",
     "web3": "^1.0.0-beta.37",
     "webpack": "^4.29.0",
-    "webpack-cli": "^3.2.1"
+    "webpack-cli": "^3.2.1",
+    "webpack-merge": "^4.2.1"
   },
   "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
