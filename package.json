@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "main": "dist/index.js",
   "browser": "index.js",
   "scripts": {
