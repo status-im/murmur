@@ -1,10 +1,4 @@
-var webpack = require('webpack');
 const path = require("path");
-
-var plugins = [];
-plugins.push(
-    new webpack.IgnorePlugin(/(ethereumjs-devp2p|devp2p-node)/)
-);
 
 
 module.exports = {
@@ -21,5 +15,12 @@ module.exports = {
     libraryTarget: 'var',
     filename: 'murmur.js'
   },
-  plugins: plugins
+  module: {
+    rules: [
+      {
+        test: /devp2p-node.js/,
+        loader: 'null-loader'
+      }
+    ]
+  }
 };

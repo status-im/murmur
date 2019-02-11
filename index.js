@@ -1,3 +1,3 @@
-const Murmur = require('./src/index.js');
+const Murmur = require('./dist/murmur.js');
 
 module.exports = Murmur;
