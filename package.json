@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "main": "./dist/index.js",
   "browser": {
     "./dist/index.js": "./dist/client.js"
@@ -80,7 +80,6 @@
     "webpack-cli": "^3.2.1",
     "webpack-merge": "^4.2.1",
     "webpack-node-externals": "^1.7.2"
-
   },
   "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
