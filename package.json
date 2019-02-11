@@ -1,8 +1,8 @@
 {
   "name": "murmur-client",
   "version": "0.3.8",
-  "main": "dist/index.js",
-  "browser": "index.js",
+  "main": "node.js",
+  "browser": "browser.js",
   "scripts": {
     "babel": "babel",
     "babel:node": "npm-run-all babel:node:*",
