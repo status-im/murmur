@@ -27,7 +27,10 @@ class Murmur {
 
   async start() {
     if(this.protocols.indexOf("devp2p") > -1){
-      const devp2p = require("./devp2p-node.js");
+      const DevP2PNode = require("./devp2p-node.js");
+      const devp2p = new DevP2PNode();
+      const config = require("../data/config.json");
+      devp2p.setConfig(config);
       devp2p.start();
       devp2p.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
       this.nodes.push(devp2p);

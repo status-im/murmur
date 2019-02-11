@@ -1,7 +1,8 @@
-const path = require("path");
+const path = require('path');
+const nodeExternals = require('webpack-node-externals');
 
 
-module.exports = {
+const webConfig = {
   entry: path.join(__dirname, "src/index.js"),
   externals: {
     'ethereumjs-devp2p': 'ethereumjs-devp2p',
@@ -11,9 +12,10 @@ module.exports = {
   },
   target: 'web',
   output: {
-    library: 'Murmur',
-    libraryTarget: 'var',
-    filename: 'murmur.js'
+    path: path.resolve(__dirname, "dist"),
+    library: 'murmur',
+    libraryTarget: 'commonjs2',
+    filename: 'client.js'
   },
   module: {
     rules: [
@@ -24,3 +26,17 @@ module.exports = {
     ]
   }
 };
+
+const nodeConfig = {
+  target: "node",
+  entry: path.join(__dirname, "src/index.js"),
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "server.js",
+    library: 'murmur',
+    libraryTarget: 'commonjs2',
+  },
+  externals: [nodeExternals()]
+};
+
+module.exports = [webConfig, nodeConfig];

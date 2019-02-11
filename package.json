@@ -1,17 +1,21 @@
 {
   "name": "murmur-client",
   "version": "0.3.8",
-  "main": "node.js",
-  "browser": "browser.js",
+  "main": "./dist/index.js",
+  "browser": {
+    "./dist/index.js": "./dist/client.js"
+  },
   "scripts": {
     "babel": "babel",
     "babel:node": "npm-run-all babel:node:*",
     "babel:node:src": "cross-env BABEL_ENV=node babel src --copy-files --extensions \".js,.ts\" --out-dir dist --source-maps",
     "babel:watch": "run-p babel:watch:*",
     "babel:watch:src": "npm run babel:node:src -- --verbose --watch",
-    "build": "npm-run-all build:node webpack-dev",
-    "build:prod": "npm-run-all build:node webpack-prod",
-    "build:node": "npm run babel:node",
+    "webpack:dev": "webpack --config webpack.dev.js",
+    "webpack:prod": "webpack --config webpack.prod.js",
+    "build:prod": "npm-run-all babel:node webpack:prod",
+    "build:dev": "npm-run-all babel:node webpack:dev",
+    "build": "npm-run-all build:dev",
     "clean": "rimraf dist",
     "lint": "npm-run-all lint:*",
     "lint:js": "npm-run-all lint:js:*",
@@ -27,8 +31,6 @@
     "tslint": "tslint",
     "type-check": "tsc",
     "type-check:watch": "npm run type-check -- --watch",
-    "webpack-dev": "webpack --config webpack.dev.js",
-    "webpack-prod": "webpack --config webpack.prod.js",
     "docker:image": "docker build -t statusteam/murmur .",
     "docker:push": "docker push statusteam/murmur"
   },
@@ -76,7 +78,9 @@
     "web3": "^1.0.0-beta.37",
     "webpack": "^4.29.0",
     "webpack-cli": "^3.2.1",
-    "webpack-merge": "^4.2.1"
+    "webpack-merge": "^4.2.1",
+    "webpack-node-externals": "^1.7.2"
+
   },
   "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
