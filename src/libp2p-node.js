@@ -10,6 +10,7 @@ const config = require('../data/config.json');
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
 const Envelope = require('./envelope');
 
+const PROTOCOL = '/ethereum/shh/6.0.0/dev-v1';
 
 let p2pNode;
 
@@ -39,7 +40,7 @@ const createNode = (self) => {
         p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/ethereum/shh/6.0.0/dev-v1', (protocol, conn) => {
+      p2pNode.handle(PROTOCOL, (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
@@ -131,7 +132,10 @@ class LibP2PNode {
     
     this.node.on('peer:connect', (peer) => {
       console.log(chalk.green(`Add libp2p peer: ${peer.id.toB58String()}`));
-      this.peers[peer.id.toB58String()] = { peer };
+
+      const peer_id = peer.id.toB58String();
+      if(!this.peers[peer_id]) this.peers[peer_id] = {}; 
+      this.peers[peer_id].peer = peer;
 
       // Sending the status on initial connection
       const payload = [Buffer.from([6]), Buffer.from("3f50624dd2f1a9fc", "hex"), this.bloomManager.getBloomFilter(), Buffer.from([]), Buffer.from([1])];
@@ -189,14 +193,14 @@ class LibP2PNode {
 
     if (peerId) {
       let peer = this.peers[peerId].peer;
-      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
+      this.node.dialProtocol(peer, PROTOCOL, cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
         if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(p.bloom, input.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
+        this.node.dialProtocol(p.peer, PROTOCOL, cb(code, message));
       }
     }
   }
