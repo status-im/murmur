@@ -14,9 +14,6 @@ class LibP2PBundle extends libp2p {
   constructor (peerInfo, options) {
     let bootnodes = options.bootnodes && options.bootnodes.length ? options.bootnodes : [];
     if(!bootnodes.length) bootnodes = BOOTNODES && BOOTNODES.length ? BOOTNODES : [];
-    
-//bootnodes = [];
-
     const ma = "/ip4/0.0.0.0/tcp/0/ws/ipfs/" +  peerInfo.id.toB58String();
     peerInfo.multiaddrs.add(ma);
 
@@ -28,7 +25,6 @@ class LibP2PBundle extends libp2p {
         peerDiscovery: [Bootstrap],
         dht: KadDHT
       },
-      
       peerInfo,
       config: {
         peerDiscovery: {
