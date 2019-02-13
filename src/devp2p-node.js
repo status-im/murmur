@@ -51,6 +51,7 @@ class DevP2PNode {
   setConfig(config){
     this.privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
     this.staticnodes = config.devp2p["staticNodes"].map(parseENR);
+    this.trustedPeers = config.devp2p["trustedPeers"];
     this.bootnodes = config.devp2p["bootnodes"].map(parseENR).map(node => {
       return {
         address: node.address,
@@ -196,10 +197,14 @@ console.log("Old message received: " + (tooOld ? "1" : "0"));
 
         if(tooOld && !trustedPeer) return;
 
-        this.tracker.push(envelope, 'devp2p');
 
         // Broadcast received message again.
-        if(!tooOld) this.broadcast(envelope);
+        if(!tooOld) {
+          this.tracker.push(envelope, 'devp2p');
+          this.broadcast(envelope);
+        } else {
+          this.events.emit('shh_old_message', envelope);
+        }
 
         this.events.emit('shh_message', envelope);
       });

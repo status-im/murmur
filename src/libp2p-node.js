@@ -45,9 +45,6 @@ const createNode = (self) => {
           drain(message => {
             conn.getPeerInfo((err, peerInfo) => {
               try {
-                console.log(message);
-
-
                 const code = message[0].readUInt8(0);
                 const payload = rlp.decode(message[1]);
                 const peerId = peerInfo.id.toB58String();
@@ -62,9 +59,7 @@ const createNode = (self) => {
                   });
                 }
 
-                if (code === SHH_P2PREQ){
-                  p2pNode.emit('direct-message', new Envelope(payload), peerId);
-                }
+                if (code === SHH_P2PREQ) p2pNode.emit('direct-message', new Envelope(payload), peerId);
               } catch (e) {
                 console.log("Invalid message: " + e.message);
               }
