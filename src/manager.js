@@ -13,6 +13,7 @@ const MessageTracker = require('./message-tracker');
 const Envelope = require("./envelope");
 
 const dummyPrivKey = Buffer.from("0011223344556677889900112233445566778899001122334455667788990011", "hex");
+
 class Manager {
 
   constructor(provider, options) {
@@ -20,7 +21,6 @@ class Manager {
     this.options = options;
     this.keys = {};
     this.subscriptions = {};
-    this.mailserverSubscriptions = {};
 
     this.messagesTracker = new MessageTracker();
     this.bloomManager = new BloomFilterManager(options.ignoreBloomFilters);
@@ -216,16 +216,16 @@ class Manager {
 
       if(this.getNode('devp2p')){
         this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
-          if(err){
-            cb(err);
-          } else {
-            cb(null, data);
-          }
-        });
-      } else {
-        cb(null, true);
-      }
-      
+        if(err){
+          cb(err);
+        } else {
+          cb(null, data);
+        }
+      });
+    } else {
+      cb(null, true);
+    }
+
     });
 
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
@@ -238,16 +238,17 @@ class Manager {
 
       const bloom = message.bloom ? message.bloom : createBloomFilter(message);
 
+      let payloadArr = [message.from, message.to, bloom, message.limit, null, 1];
+      if(message.bridgePeerId){
+        payloadArr.push(message.mailserverPeer);
+      }
+      
+      const payload = rlp.encode([message.from, message.to, bloom, message.limit, null, 1]);
+
       let publicKey = null;
-
-      const payload = rlp.encode([message.from, message.to, bloom, message.limit, null, 1, message.mailserverPeer]);
-
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
       }
-
-      console.log("E");
-
 
       let privateKey;
       if(this.getNode('devp2p')){
@@ -270,10 +271,6 @@ class Manager {
         payload: payload,
         targetPeer: peerId
       };
-
-      if(message.bridgePeerId){
-        envelope.libp2pPeer = message.bridgePeerId;
-      }
 
       this.provider.events.emit('post', envelope, cb);
     });
@@ -488,54 +485,57 @@ class Manager {
 
 
 
+
+
+
+
       this.provider.events.emit("generateSymKeyFromPassword", "status-offline-inbox", (err, symKeyID) => {
 
 
 
 
 
- // TODO: refactor this
- this.getNode('libp2p').events.on("shh_bridge_mailserver_request", (envelope, peerId) => {
-  // Mailserver password
-  const key = Buffer.from("765df27c0765526f920ba742ff4b9452bb0064e016435ffccd81186aa6feaae8", "hex"); 
-  messages.decryptSymmetric(envelope.topic, key, envelope.data, (err, decrypted) => {
-    if(!decrypted) return;
-
-    const message = rlp.decode(decrypted.payload);
-
-    const params = {
-      from: message[0].readUInt32BE(0),
-      to: message[1].readUInt32BE(0),
-      bloom: message[2],
-      limit: Buffer.from([]),
-      mailserverPeer: message[6].toString(),
-      symKeyID
-    };
-    if(this.getNode('devp2p')){
-
-      console.log("REQUESTING MESSAGES");
-
-      this.provider.events.emit("requestMessages", 0.002, params, (err, data) => {
-        console.log(err);
-        console.log(data);
-      });
+        // TODO: refactor this
+        this.getNode('libp2p').events.on("shh_bridge_mailserver_request", (envelope, peerId) => {
+         // Mailserver password
+         const key = Buffer.from("765df27c0765526f920ba742ff4b9452bb0064e016435ffccd81186aa6feaae8", "hex"); 
+         messages.decryptSymmetric(envelope.topic, key, envelope.data, (err, decrypted) => {
+           if(!decrypted) return;
+       
+           const message = rlp.decode(decrypted.payload);
+       
+           const params = {
+             from: message[0].readUInt32BE(0),
+             to: message[1].readUInt32BE(0),
+             bloom: message[2],
+             limit: Buffer.from([]),
+             mailserverPeer: message[6].toString(),
+             symKeyID
+           };
+           if(this.getNode('devp2p')){
+       
+             console.log("REQUESTING MESSAGES");
+       
+             this.provider.events.emit("requestMessages", 0.002, params, (err, data) => {
+               console.log(err);
+               console.log(data);
+             });
+           }
+         });
+       
+       
+       
+             });
+       
+       
+       
+       
+       
+       
+            
+               
+             });
     }
-  });
-
-
-
-      });
-
-
-
-
-
-
-     
-        
-      });
-    }
-    
   }
 
 }
