@@ -15,7 +15,7 @@ const webConfig = {
     path: path.resolve(__dirname, "dist"),
     library: 'murmur',
     libraryTarget: 'commonjs2',
-    filename: 'client.js'
+    filename: 'browser.js'
   },
   module: {
     rules: [
@@ -32,7 +32,7 @@ const nodeConfig = {
   entry: path.join(__dirname, "src/index.js"),
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "server.js",
+    filename: "node.js",
     library: 'murmur',
     libraryTarget: 'commonjs2',
   },
