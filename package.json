@@ -1,6 +1,6 @@
 {
   "name": "murmur-client",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "main": "./dist/node.js",
   "browser": "./dist/browser.js",
   "scripts": {
