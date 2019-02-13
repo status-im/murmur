@@ -191,6 +191,9 @@ class DevP2PNode {
         const trustedPeer = this.trustedPeers.includes(peer);
         const tooOld = this.isTooOld(envelope.expiry);
 
+/////  
+console.log("Old message received: " + (tooOld ? "1" : "0"));
+
         if(tooOld && !trustedPeer) return;
 
         this.tracker.push(envelope, 'devp2p');

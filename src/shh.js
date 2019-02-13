@@ -1,6 +1,6 @@
 const rlp = require('rlp-encoding');
 const Events = require('events');
-const {SHH_BLOOM, SHH_MESSAGE, SHH_P2PMSG, SHH_STATUS} = require('./constants');
+const {SHH_BLOOM, SHH_MESSAGE, SHH_P2PMSG, SHH_P2PREQ, SHH_STATUS} = require('./constants');
 const Envelope = require('./envelope');
 
 class SHH {
@@ -38,5 +38,6 @@ module.exports = {
   default: SHH,
   SHH_BLOOM,
   SHH_MESSAGE,
-  SHH_STATUS
+  SHH_STATUS,
+  SHH_P2PREQ
 };

@@ -12,6 +12,7 @@ const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
 const Envelope = require("./envelope");
 
+const dummyPrivKey = Buffer.from("0011223344556677889900112233445566778899001122334455667788990011", "hex");
 class Manager {
 
   constructor(provider, options) {
@@ -19,6 +20,7 @@ class Manager {
     this.options = options;
     this.keys = {};
     this.subscriptions = {};
+    this.mailserverSubscriptions = {};
 
     this.messagesTracker = new MessageTracker();
     this.bloomManager = new BloomFilterManager(options.ignoreBloomFilters);
@@ -64,7 +66,8 @@ class Manager {
         padding,
         powTime,
         powTarget,
-        targetPeer
+        targetPeer,
+        libp2pPeer
       } = payload;
 
       let messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
@@ -149,9 +152,11 @@ class Manager {
         const libp2p = this.getNode('libp2p');
 
         if(targetPeer){
-          // Mailserver request
-          if(devp2p) devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
-          // TODO: libp2p mailserver
+          if(libp2pPeer && libp2p){
+            libp2p.broadcast(msgEnv, libp2pPeer, constants.SHH_P2PREQ);
+          } else if(devp2p) {
+            devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
+          }
         } else {
 
           if(devp2p) {
@@ -197,7 +202,7 @@ class Manager {
 
 
     this.provider.events.on("markTrustedPeer", enode => {
-      this.getNode('devp2p').addTrustedPeer(enode);
+      if(this.getNode('devp2p')) this.getNode('devp2p').addTrustedPeer(enode);
     });
 
     
@@ -209,13 +214,18 @@ class Manager {
       const address = ipInfo[0];
       const port = ipInfo[1];
 
-      this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
-        if(err){
-          cb(err);
-        } else {
-          cb(null, data);
-        }
-      });
+      if(this.getNode('devp2p')){
+        this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
+          if(err){
+            cb(err);
+          } else {
+            cb(null, data);
+          }
+        });
+      } else {
+        cb(null, true);
+      }
+      
     });
 
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
@@ -226,19 +236,33 @@ class Manager {
       if(!message.from)  message.from = now - 86400; // -24hr
       if(!message.timeout) message.timeout = 30;
 
+      const bloom = message.bloom ? message.bloom : createBloomFilter(message);
+
       let publicKey = null;
 
-      const payload = rlp.encode([message.from, message.to, createBloomFilter(message), message.limit, null, 1]);
+      const payload = rlp.encode([message.from, message.to, bloom, message.limit, null, 1, message.mailserverPeer]);
 
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
+      }
+
+      console.log("E");
+
+
+      let privateKey;
+      if(this.getNode('devp2p')){
+        privateKey = this.getNode('devp2p').privateKey;
+      } else {
+        // Placeholder since it will be the bridge that will request the messages
+        // TODO: account must be a valid pk
+        privateKey = randomBytes(constants.privKeyLength);
       }
 
       // TODO: mailserver request. Check how it would work with libp2p
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
-        sig: this.getNode('devp2p').privateKey,
+        sig: privateKey,
         ttl: 50,
         topic: "0x00000000",
         powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
@@ -246,6 +270,10 @@ class Manager {
         payload: payload,
         targetPeer: peerId
       };
+
+      if(message.bridgePeerId){
+        envelope.libp2pPeer = message.bridgePeerId;
+      }
 
       this.provider.events.emit('post', envelope, cb);
     });
@@ -455,7 +483,59 @@ class Manager {
     if(this.getNode('libp2p')) {
       this.getNode('libp2p').events.on('ready', () => { this.isReady('libp2p'); });
       this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
+
+
+
+
+
+      this.provider.events.emit("generateSymKeyFromPassword", "status-offline-inbox", (err, symKeyID) => {
+
+
+
+
+
+ // TODO: refactor this
+ this.getNode('libp2p').events.on("shh_bridge_mailserver_request", (envelope, peerId) => {
+  // Mailserver password
+  const key = Buffer.from("765df27c0765526f920ba742ff4b9452bb0064e016435ffccd81186aa6feaae8", "hex"); 
+  messages.decryptSymmetric(envelope.topic, key, envelope.data, (err, decrypted) => {
+    if(!decrypted) return;
+
+    const message = rlp.decode(decrypted.payload);
+
+    const params = {
+      from: message[0].readUInt32BE(0),
+      to: message[1].readUInt32BE(0),
+      bloom: message[2],
+      limit: Buffer.from([]),
+      mailserverPeer: message[6].toString(),
+      symKeyID
+    };
+    if(this.getNode('devp2p')){
+
+      console.log("REQUESTING MESSAGES");
+
+      this.provider.events.emit("requestMessages", 0.002, params, (err, data) => {
+        console.log(err);
+        console.log(data);
+      });
     }
+  });
+
+
+
+      });
+
+
+
+
+
+
+     
+        
+      });
+    }
+    
   }
 
 }
