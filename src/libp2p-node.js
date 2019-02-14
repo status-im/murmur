@@ -182,9 +182,6 @@ class LibP2PNode {
 
       // In this case, topic: 000000 is for mailservers
       this.events.emit('shh_bridge_mailserver_request', envelope, peerId);
-
-
-
     });
   }
 
