@@ -260,11 +260,9 @@ class Manager {
         privateKey = this.getNode('devp2p').privateKey;
       } else {
         // Placeholder since it will be the bridge that will request the messages
-        // TODO: account must be a valid pk
         privateKey = randomBytes(constants.privKeyLength);
       }
 
-      // TODO: mailserver request. Check how it would work with libp2p
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
