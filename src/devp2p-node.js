@@ -192,21 +192,17 @@ class DevP2PNode {
         const trustedPeer = this.trustedPeers.includes(peer);
         const tooOld = this.isTooOld(envelope.expiry);
 
-/////  
-console.log("Old message received: " + (tooOld ? "1" : "0"));
-
         if(tooOld && !trustedPeer) return;
 
-
-        // Broadcast received message again.
         if(!tooOld) {
+          // Broadcast received message again.
           this.tracker.push(envelope, 'devp2p');
           this.broadcast(envelope);
+          
+          this.events.emit('shh_message', envelope);
         } else {
-          this.events.emit('shh_old_message', envelope);
+          this.events.emit('shh_old_message', envelope, peer);
         }
-
-        this.events.emit('shh_message', envelope);
       });
 
       const clientId = peer.getHelloMessage().clientId;
