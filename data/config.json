@@ -5,6 +5,7 @@
         "signalServers": [
             "/dns4/web-bridge.status.im/tcp/443/wss/p2p-webrtc-star"
         ],
+        "trustedPeers": [],
         "bootnodes": []
     },
     "devp2p": {

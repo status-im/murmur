@@ -34,10 +34,10 @@ class DevP2PNode {
   constructor(options) {
     if(!options) options = {};
 
-    this.privateKey = options.privateKey;
+    this.privateKey = options.privateKey || randomBytes(32);
     this.bootnodes = options.bootnodes || [];
-    this.staticnodes = options.staticnodes || [];
-    this.trustedPeers = [];
+    this.staticnodes = options.staticNodes ? options.staticNodes.map(parseENR) : [];
+    this.trustedPeers = options.trustedPeers || [];
     this.events = new Events();
     this.peers = {};
 
@@ -49,10 +49,10 @@ class DevP2PNode {
   }
 
   setConfig(config){
-    this.privateKey = config['devp2p'].account ? Buffer.from(config['devp2p'].account, "hex") : randomBytes(32);
-    this.staticnodes = config.devp2p["staticNodes"].map(parseENR);
-    this.trustedPeers = config.devp2p["trustedPeers"];
-    this.bootnodes = config.devp2p["bootnodes"].map(parseENR).map(node => {
+    this.privateKey = config.devp2p.account ? Buffer.from(config.devp2p.account, "hex") : randomBytes(32);
+    this.staticnodes = config.devp2p.staticNodes.map(parseENR);
+    this.trustedPeers = config.devp2p.trustedPeers;
+    this.bootnodes = config.devp2p.bootnodes.map(parseENR).map(node => {
       return {
         address: node.address,
         udpPort: node.port,

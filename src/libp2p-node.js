@@ -99,7 +99,7 @@ class LibP2PNode {
       this.privateKey = options.privateKey;
       this.bootnodes = options.bootnodes || [];
       this.staticnodes = options.staticnodes || [];
-      this.trustedPeers = [];
+      this.trustedPeers = options.trustedPeers || [];
       this.events = new Events();
       this.peers = {};
       this.type = "libp2p";
@@ -113,8 +113,9 @@ class LibP2PNode {
     }
 
     setConfig(config){
-      this.bootnodes = config.bootnodes;
-      this.privateKey = config['libp2p'].account || "";
+      this.bootnodes = config.libp2p.bootnodes || [];
+      this.privateKey = config.libp2p.account || "";
+      this.trustedPeers = config.libp2p.trustedPeers || [];
     }
 
     setTracker(tracker){
