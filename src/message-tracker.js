@@ -18,7 +18,7 @@ class MessageTracker {
   }
 
   isSent(envelope) {
-    return this.messages[envelope.id].sent;
+    return this.messages[envelope.id] && this.messages[envelope.id].sent;
   }
 
   sent(envelope) {

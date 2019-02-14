@@ -10,6 +10,7 @@ const config = require('../data/config.json');
 const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS, SHH_P2PREQ} = require('./shh.js');
 const Envelope = require('./envelope');
 
+const PROTOCOL = "/ethereum/shh/6.0.0/dev-v1";
 
 let p2pNode;
 
@@ -39,7 +40,7 @@ const createNode = (self) => {
         p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/ethereum/shh/6.0.0/dev-v1', (protocol, conn) => {
+      p2pNode.handle(PROTOCOL, (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
@@ -154,12 +155,11 @@ class LibP2PNode {
       if(!this.bloomManager.match(envelope.bloom)) return;
 
       // Verifying if old message is sent by trusted peer
-      // @TODO: for mailservers inspect peer
-      // const trustedPeer = this.trustedPeers.includes(peer); 
+      const trustedPeer = this.trustedPeers.includes(peer); 
       const tooOld = this.isTooOld(envelope.expiry);
 
       // Discarding old envelope unless sent by trusted peer
-      // if(tooOld && !trustedPeer) return; 
+      if(tooOld && !trustedPeer) return; 
 
       this.tracker.push(envelope, 'libp2p');
       
@@ -200,16 +200,14 @@ class LibP2PNode {
 
     if (peerId) {
       let p = this.peers[peerId];
-      if(p) {
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
-      }
+      if(p) this.node.dialProtocol(p.peer, PROTOCOL, cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
         if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(p.bloom, input.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
+        this.node.dialProtocol(p.peer, PROTOCOL, cb(code, message));
       }
     }
   }
