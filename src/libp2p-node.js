@@ -25,6 +25,9 @@ const createNode = (self) => {
   return new Promise(function(resolve, reject) {
 
     const nodeHandler = (err, peerInfo) => {
+
+      //console.log(peerInfo.id.toJSON());
+
       if(err) {
         reject(err);
       }
@@ -71,12 +74,18 @@ const createNode = (self) => {
       resolve(p2pNode);
     };
 
-    // TODO: probably not secure and prone to errors. Fix
-    //       also, what's the diff between createFromHexString and createFromPrivKey?
-    const privateKey = self.privateKey ? Buffer.from(self.privateKey, "hex") : null;
+    let privateKey = self.privateKey ? self.privateKey : "";
     if(privateKey){
-      const peerId = PeerId.createFromHexString(privateKey);
-      PeerInfo.create(peerId, nodeHandler);
+      PeerId.createFromPrivKey(privateKey, (err, peerId) => {
+        if(err) {
+          console.error(err);
+          return;
+        }
+
+        PeerInfo.create(peerId, nodeHandler);
+      });
+      //  
+      
     } else {
       PeerInfo.create(nodeHandler);
     }
@@ -105,7 +114,7 @@ class LibP2PNode {
 
     setConfig(config){
       this.bootnodes = config.bootnodes;
-      this.privateKey = config.account ? Buffer.from(config.account, "hex") : null;
+      this.privateKey = config['libp2p'].account || "";
     }
 
     setTracker(tracker){

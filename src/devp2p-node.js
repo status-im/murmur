@@ -49,7 +49,7 @@ class DevP2PNode {
   }
 
   setConfig(config){
-    this.privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
+    this.privateKey = config['devp2p'].account ? Buffer.from(config['devp2p'].account, "hex") : randomBytes(32);
     this.staticnodes = config.devp2p["staticNodes"].map(parseENR);
     this.trustedPeers = config.devp2p["trustedPeers"];
     this.bootnodes = config.devp2p["bootnodes"].map(parseENR).map(node => {

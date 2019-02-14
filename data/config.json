@@ -1,13 +1,14 @@
 {
-    "account": "",
     "mailserverPassword": "status-offline-inbox",
     "libp2p": {
+        "account": "",
         "signalServers": [
-            "/ip4/127.0.0.1/tcp/9090/ws/p2p-webrtc-star"
+            "/dns4/web-bridge.status.im/tcp/443/wss/p2p-webrtc-star"
         ],
         "bootnodes": []
     },
     "devp2p": {
+        "account": "",
         "bootnodes": [
             "enode://e8a7c03b58911e98bbd66accb2a55d57683f35b23bf9dfca89e5e244eb5cc3f25018b4112db507faca34fb69ffb44b362f79eda97a669a8df29c72e654416784@47.91.224.35:443", 
             "enode://436cc6f674928fdc9a9f7990f2944002b685d1c37f025c1be425185b5b1f0900feaf1ccc2a6130268f9901be4a7d252f37302c8335a2c1a62736e9232691cc3a@174.138.105.243:443", 
