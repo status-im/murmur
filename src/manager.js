@@ -468,16 +468,20 @@ class Manager {
       };
 
      // console.dir(">>>>> subscription");
-      let keyId = topicSubscriptions[subscriptionId].symKeyID;
-      if (!keyId) {
-        keyId = topicSubscriptions[subscriptionId].privateKeyID;
-        if(this.keys[keyId]){
-          let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
-          messages.decryptAsymmetric(key, envelope.data, decryptCB);
+      try {
+        let keyId = topicSubscriptions[subscriptionId].symKeyID;
+        if (!keyId) {
+          keyId = topicSubscriptions[subscriptionId].privateKeyID;
+          if(this.keys[keyId]){
+            let key = Buffer.from(this.keys[keyId].privKey.slice(2), 'hex');
+            messages.decryptAsymmetric(key, envelope.data, decryptCB);
+          }
+        } else {
+          let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
+          messages.decryptSymmetric(envelope.topic, key, envelope.data, decryptCB);
         }
-      } else {
-        let key = Buffer.from(this.keys[keyId].symmetricKey.slice(2), 'hex');
-        messages.decryptSymmetric(envelope.topic, key, envelope.data, decryptCB);
+      } catch(e) {
+        //
       }
     }
   }
