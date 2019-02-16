@@ -182,19 +182,29 @@ class Manager {
 
     // TODO: this needs to refactored to take into account different clients
     this.provider.events.on('subscribe', (payload, cb) => {
-      const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
+      let { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
+
+      topics = topics || [];
 
       this.bloomManager.emit('updateFilter', topics);
 
-      for (let topic of topics) {
-        if (!this.subscriptions[topic]) {
-          this.subscriptions[topic] = {};
-        }
-        this.subscriptions[topic][id] = {
+      if(!topics.length){
+        if(!this.subscriptions['all']) this.subscriptions['all'] = {};
+        this.subscriptions['all'][id] = {
           privateKeyID,
           symKeyID
         };
+      } else {
+        for (let topic of topics) {
+          if (!this.subscriptions[topic]) {
+            this.subscriptions[topic] = {};
+          }
+          this.subscriptions[topic][id] = {
+            privateKeyID,
+            symKeyID
+          };
+        }
       }
 
       cb(null, id);
@@ -422,15 +432,16 @@ class Manager {
     
     const calculatedPow = pow.calculatePoW(envelope.expiry, ttl, envelope.topic, envelope.data, nonce);
 
-    let topicSubscriptions = this.subscriptions['0x' + envelope.topic.toString('hex')];
-    if (!topicSubscriptions) {
-      return;
-    }
+    let topicSubscriptions = this.subscriptions['0x' + envelope.topic.toString('hex')] || {};
+    let all = this.subscriptions['all'] || {};
+
+    topicSubscriptions = Object.assign(topicSubscriptions, all);
+
+    if (!topicSubscriptions) return;
 
     for (let subscriptionId of Object.keys(topicSubscriptions)) {
 
       const decryptCB = (err, decrypted) => {
-        
         if(!decrypted) return;
         // console.dir(decrypted.payload.toString());
         //onsole.dir(decrypted.pubKey.toString('hex'));
