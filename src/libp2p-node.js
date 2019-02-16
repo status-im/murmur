@@ -7,9 +7,10 @@ const drain = require('pull-stream/sinks/drain');
 const rlp = require('rlp-encoding');
 const Events = require('events');
 const config = require('../data/config.json');
-const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS} = require('./shh.js');
+const {SHH_BLOOM, SHH_MESSAGE, SHH_STATUS, SHH_P2PREQ} = require('./shh.js');
 const Envelope = require('./envelope');
 
+const PROTOCOL = "/ethereum/shh/6.0.0/dev-v1";
 
 let p2pNode;
 
@@ -24,6 +25,9 @@ const createNode = (self) => {
   return new Promise(function(resolve, reject) {
 
     const nodeHandler = (err, peerInfo) => {
+
+      //console.log(peerInfo.id.toJSON());
+
       if(err) {
         reject(err);
       }
@@ -39,7 +43,7 @@ const createNode = (self) => {
         p2pNode.old_start(libP2Phello(self.events));
       };
 
-      p2pNode.handle('/ethereum/shh/6.0.0/dev-v1', (protocol, conn) => {
+      p2pNode.handle(PROTOCOL, (protocol, conn) => {
         pull(conn,
           pull.map((v) => rlp.decode(Buffer.from(v.toString(), 'hex'))),
           drain(message => {
@@ -51,13 +55,15 @@ const createNode = (self) => {
 
                 if (code === SHH_STATUS) p2pNode.emit('status', payload, peerId);
                 
-                if (code === SHH_BLOOM) p2pNode.emit('bloom_exchange', payload, peerId);
+                if (code === SHH_BLOOM) p2pNode.emit('bloom-exchange', payload, peerId);
                 
                 if (code === SHH_MESSAGE) {
                   payload.forEach((envelope) => {
                     p2pNode.emit('message', new Envelope(envelope), peerId);
                   });
                 }
+
+                if (code === SHH_P2PREQ) p2pNode.emit('direct-message', new Envelope(payload), peerId);
               } catch (e) {
                 console.log("Invalid message: " + e.message);
               }
@@ -68,12 +74,18 @@ const createNode = (self) => {
       resolve(p2pNode);
     };
 
-    // TODO: probably not secure and prone to errors. Fix
-    //       also, what's the diff between createFromHexString and createFromPrivKey?
-    const privateKey = self.privateKey ? Buffer.from(self.privateKey, "hex") : null;
+    let privateKey = self.privateKey ? self.privateKey : "";
     if(privateKey){
-      const peerId = PeerId.createFromHexString(privateKey);
-      PeerInfo.create(peerId, nodeHandler);
+      PeerId.createFromPrivKey(privateKey, (err, peerId) => {
+        if(err) {
+          console.error(err);
+          return;
+        }
+
+        PeerInfo.create(peerId, nodeHandler);
+      });
+      //  
+      
     } else {
       PeerInfo.create(nodeHandler);
     }
@@ -87,7 +99,7 @@ class LibP2PNode {
       this.privateKey = options.privateKey;
       this.bootnodes = options.bootnodes || [];
       this.staticnodes = options.staticnodes || [];
-      this.trustedPeers = [];
+      this.trustedPeers = options.trustedPeers || [];
       this.events = new Events();
       this.peers = {};
       this.type = "libp2p";
@@ -101,8 +113,9 @@ class LibP2PNode {
     }
 
     setConfig(config){
-      this.bootnodes = config.bootnodes;
-      this.privateKey = config.account ? Buffer.from(config.account, "hex") : null;
+      this.bootnodes = config.libp2p.bootnodes || [];
+      this.privateKey = config.libp2p.account || "";
+      this.trustedPeers = config.libp2p.trustedPeers || [];
     }
 
     setTracker(tracker){
@@ -152,12 +165,11 @@ class LibP2PNode {
       if(!this.bloomManager.match(envelope.bloom)) return;
 
       // Verifying if old message is sent by trusted peer
-      // @TODO: for mailservers inspect peer
-      // const trustedPeer = this.trustedPeers.includes(peer); 
+      const trustedPeer = this.trustedPeers.includes(peer); 
       const tooOld = this.isTooOld(envelope.expiry);
 
       // Discarding old envelope unless sent by trusted peer
-      // if(tooOld && !trustedPeer) return; 
+      if(tooOld && !trustedPeer) return; 
 
       this.tracker.push(envelope, 'libp2p');
       
@@ -171,14 +183,20 @@ class LibP2PNode {
       this.peers[peerId].bloom = status[2];
     });
 
-    this.node.on("bloom_exchange", (bloom, peerId) => {
+    this.node.on("bloom-exchange", (bloom, peerId) => {
       this.peers[peerId].bloom = bloom;
+    });
+
+    this.node.on("direct-message", (envelope, peerId) => {
+      // TODO: handling p2p request should be made modular, loading plugins depending on the topic.
+
+      // In this case, topic: 000000 is for mailservers
+      this.events.emit('shh_bridge_mailserver_request', envelope, peerId);
     });
   }
 
   broadcast(input, peerId, code = SHH_MESSAGE) {
     const message = rlp.encode(input instanceof Envelope ? [input.message] : input);
-
     if(code === null) code = SHH_MESSAGE;
 
     const cb = (code, msg) => (err, conn) => {
@@ -188,15 +206,15 @@ class LibP2PNode {
     };
 
     if (peerId) {
-      let peer = this.peers[peerId].peer;
-      this.node.dialProtocol(peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
+      let p = this.peers[peerId];
+      if(p) this.node.dialProtocol(p.peer, PROTOCOL, cb(code, message));
     } else {
       for (let peerId of Object.keys(this.peers)) {
         let p = this.peers[peerId];
 
         if(code == SHH_MESSAGE && !this.bloomManager.filtersMatch(p.bloom, input.bloom)) continue;
 
-        this.node.dialProtocol(p.peer, '/ethereum/shh/6.0.0/dev-v1', cb(code, message));
+        this.node.dialProtocol(p.peer, PROTOCOL, cb(code, message));
       }
     }
   }

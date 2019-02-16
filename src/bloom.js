@@ -36,10 +36,10 @@ class BloomFilterManager {
     return false;
   }
 
-  filtersMatch(base, searchBloom){
+  filtersMatch(base, searchValue){
     if(this.ignoreBloomFilters) return true;
 
-    return bloomFilterMatch(base, searchBloom);
+    return bloomFilterMatch(base, searchValue);
   }
   
   updateBloomFilter(topics) {
@@ -73,19 +73,21 @@ class BloomFilterManager {
   }
 }
 
-const bloomFilterMatch = (filter1, filter2) => {
-  if(!filter1 || !filter2) return true;
-  if(filter1.equals(Buffer.from([])) || filter2.equals(Buffer.from([]))) return true;
-  if(filter1.length != BloomFilterSize || filter2.length != BloomFilterSize) throw new Error("Invalid bloom filter size");
+const bloomFilterMatch = (base, searchValue) => {
+  if(!base || !searchValue) return true;
+  if(base.equals(Buffer.from([])) || searchValue.equals(Buffer.from([]))) return true;
+  if(base.length != BloomFilterSize || searchValue.length != BloomFilterSize) throw new Error("Invalid bloom filter size");
   for(let i = 0; i < BloomFilterSize; i++){
-    const a = filter1[i];
-    const b = filter2[i];
+    const a = base[i];
+    const b = searchValue[i];
     if((a | b) != a) return false;
   }
   return true;
 };
 
 const bloomFilterAddition = (filter1, filter2) => {
+  if(filter1.equals(Buffer.from([]))) return filter2;
+
   const r = Buffer.alloc(BloomFilterSize);
   for(let i = 0; i < BloomFilterSize; i++){
     r[i] = filter1[i] | filter2[i];

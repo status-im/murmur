@@ -34,10 +34,10 @@ class DevP2PNode {
   constructor(options) {
     if(!options) options = {};
 
-    this.privateKey = options.privateKey;
+    this.privateKey = options.privateKey || randomBytes(32);
     this.bootnodes = options.bootnodes || [];
-    this.staticnodes = options.staticnodes || [];
-    this.trustedPeers = [];
+    this.staticnodes = options.staticNodes ? options.staticNodes.map(parseENR) : [];
+    this.trustedPeers = options.trustedPeers || [];
     this.events = new Events();
     this.peers = {};
 
@@ -49,9 +49,10 @@ class DevP2PNode {
   }
 
   setConfig(config){
-    this.privateKey = config.account ? Buffer.from(config.account, "hex") : randomBytes(32);
-    this.staticnodes = config.devp2p["staticNodes"].map(parseENR);
-    this.bootnodes = config.devp2p["bootnodes"].map(parseENR).map(node => {
+    this.privateKey = config.devp2p.account ? Buffer.from(config.devp2p.account, "hex") : randomBytes(32);
+    this.staticnodes = config.devp2p.staticNodes.map(parseENR);
+    this.trustedPeers = config.devp2p.trustedPeers;
+    this.bootnodes = config.devp2p.bootnodes.map(parseENR).map(node => {
       return {
         address: node.address,
         udpPort: node.port,
@@ -193,12 +194,15 @@ class DevP2PNode {
 
         if(tooOld && !trustedPeer) return;
 
-        this.tracker.push(envelope, 'devp2p');
-
-        // Broadcast received message again.
-        if(!tooOld) this.broadcast(envelope);
-
-        this.events.emit('shh_message', envelope);
+        if(!tooOld) {
+          // Broadcast received message again.
+          this.tracker.push(envelope, 'devp2p');
+          this.broadcast(envelope);
+          
+          this.events.emit('shh_message', envelope);
+        } else {
+          this.events.emit('shh_old_message', envelope, peer);
+        }
       });
 
       const clientId = peer.getHelloMessage().clientId;

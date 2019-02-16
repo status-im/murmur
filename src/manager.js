@@ -7,10 +7,11 @@ const constants = require('./constants');
 const pow = require('./pow');
 const Big = require('big.js');
 const Uint64BE = require("int64-buffer").Uint64BE;
-const {createBloomFilter} = require('./bloom');
+const {createBloomFilter, bloomFilterMatch, topicToBloom, bloomFilterAddition} = require('./bloom');
 const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
 const Envelope = require("./envelope");
+const config = require('../data/config.json');
 
 class Manager {
 
@@ -19,6 +20,7 @@ class Manager {
     this.options = options;
     this.keys = {};
     this.subscriptions = {};
+    this.mailserverSubscriptions = {};
 
     this.messagesTracker = new MessageTracker();
     this.bloomManager = new BloomFilterManager(options.ignoreBloomFilters);
@@ -64,7 +66,8 @@ class Manager {
         padding,
         powTime,
         powTarget,
-        targetPeer
+        targetPeer,
+        libp2pPeer
       } = payload;
 
       let messagePayload = Buffer.from(stripHexPrefix(payload.payload), 'hex');
@@ -149,9 +152,11 @@ class Manager {
         const libp2p = this.getNode('libp2p');
 
         if(targetPeer){
-          // Mailserver request
-          if(devp2p) devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
-          // TODO: libp2p mailserver
+          if(libp2pPeer && libp2p){
+            libp2p.broadcast(msgEnv, libp2pPeer, constants.SHH_P2PREQ);
+          } else if(devp2p) {
+            devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
+          }
         } else {
 
           if(devp2p) {
@@ -177,27 +182,42 @@ class Manager {
 
     // TODO: this needs to refactored to take into account different clients
     this.provider.events.on('subscribe', (payload, cb) => {
-      const { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
+      let { _minPow, symKeyID, privateKeyID, topics, _allowP2P } = payload;
       const id = randomBytes(constants.keyIdLength).toString('hex');
+
+      topics = topics || [];
 
       this.bloomManager.emit('updateFilter', topics);
 
-      for (let topic of topics) {
-        if (!this.subscriptions[topic]) {
-          this.subscriptions[topic] = {};
-        }
-        this.subscriptions[topic][id] = {
+      if(!topics.length){
+        if(!this.subscriptions['all']) this.subscriptions['all'] = {};
+        this.subscriptions['all'][id] = {
           privateKeyID,
           symKeyID
         };
+      } else {
+        for (let topic of topics) {
+          if (!this.subscriptions[topic]) {
+            this.subscriptions[topic] = {};
+          }
+          this.subscriptions[topic][id] = {
+            privateKeyID,
+            symKeyID
+          };
+        }
       }
 
       cb(null, id);
     });
 
 
-    this.provider.events.on("markTrustedPeer", enode => {
-      this.getNode('devp2p').addTrustedPeer(enode);
+    this.provider.events.on("markTrustedPeer", (peer) => {
+      let protocol = "devp2p";
+      if(peer.startsWith("libp2p:")){
+        protocol = "libp2p";
+        peer = peer.replace(protocol + ":", "");
+      }
+      if(this.getNode(protocol)) this.getNode(protocol).addTrustedPeer(peer);
     });
 
     
@@ -209,13 +229,18 @@ class Manager {
       const address = ipInfo[0];
       const port = ipInfo[1];
 
-      this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
+      if(this.getNode('devp2p')){
+        this.getNode('devp2p').addStaticPeer({ id, address, port }, (err, data) => {
         if(err){
           cb(err);
         } else {
           cb(null, data);
         }
       });
+    } else {
+      cb(null, true);
+    }
+
     });
 
     this.provider.events.on("requestMessages", (minPow, message, cb) => {
@@ -226,19 +251,32 @@ class Manager {
       if(!message.from)  message.from = now - 86400; // -24hr
       if(!message.timeout) message.timeout = 30;
 
+      const bloom = message.bloom ? message.bloom : createBloomFilter(message);
+
+      let payloadArr = [message.from, message.to, bloom, message.limit, null, 1];
+      if(message.bridgePeerId){
+        payloadArr.push(message.mailserverPeer);
+      }
+      
+      const payload = rlp.encode(payloadArr);
+
       let publicKey = null;
-
-      const payload = rlp.encode([message.from, message.to, createBloomFilter(message), message.limit, null, 1]);
-
       if(!message.symKeyID){
         publicKey = Buffer.concat([Buffer.from(4), Buffer.from(peerId, 'hex')]);
       }
 
-      // TODO: mailserver request. Check how it would work with libp2p
+      let privateKey;
+      if(this.getNode('devp2p')){
+        privateKey = this.getNode('devp2p').privateKey;
+      } else {
+        // Placeholder since it will be the bridge that will request the messages
+        privateKey = randomBytes(constants.privKeyLength);
+      }
+
       const envelope = {
         symKeyID: message.symKeyID,
         pubKey: publicKey,
-        sig: this.getNode('devp2p').privateKey,
+        sig: privateKey,
         ttl: 50,
         topic: "0x00000000",
         powTime: 1, //  TODO: If using default time of 5 secs, peer will disconnect. PoW needs to happen in a separate thread
@@ -247,6 +285,10 @@ class Manager {
         targetPeer: peerId
       };
 
+      if(message.bridgePeerId){
+        envelope.libp2pPeer = message.bridgePeerId;
+      }
+        
       this.provider.events.emit('post', envelope, cb);
     });
 
@@ -390,15 +432,16 @@ class Manager {
     
     const calculatedPow = pow.calculatePoW(envelope.expiry, ttl, envelope.topic, envelope.data, nonce);
 
-    let topicSubscriptions = this.subscriptions['0x' + envelope.topic.toString('hex')];
-    if (!topicSubscriptions) {
-      return;
-    }
+    let topicSubscriptions = this.subscriptions['0x' + envelope.topic.toString('hex')] || {};
+    let all = this.subscriptions['all'] || {};
+
+    topicSubscriptions = Object.assign(topicSubscriptions, all);
+
+    if (!topicSubscriptions) return;
 
     for (let subscriptionId of Object.keys(topicSubscriptions)) {
 
       const decryptCB = (err, decrypted) => {
-        
         if(!decrypted) return;
         // console.dir(decrypted.payload.toString());
         //onsole.dir(decrypted.pubKey.toString('hex'));
@@ -451,11 +494,62 @@ class Manager {
     if(this.getNode('devp2p')) {
       this.getNode('devp2p').events.on('ready', () => { this.isReady('devp2p'); });
       this.getNode('devp2p').events.on('shh_message', handleMessage('libp2p'));
+      this.getNode('devp2p').events.on('shh_old_message', (envelope, originator) => {
+        this.sendEnvelopeToSubscribers(envelope); 
+        if(isBridge) this.bridgeMailserverMessages(originator, envelope);
+       });
     }
+
     if(this.getNode('libp2p')) {
       this.getNode('libp2p').events.on('ready', () => { this.isReady('libp2p'); });
       this.getNode('libp2p').events.on('shh_message', handleMessage('devp2p'));
+      if(isBridge) this.bridgeMailserverRequests();
     }
+  }
+
+
+  bridgeMailserverMessages(originator, envelope) {
+    if (!this.mailserverSubscriptions[originator]) return;
+    Object.keys(this.mailserverSubscriptions[originator]).forEach(peer => {
+      if (bloomFilterMatch(this.mailserverSubscriptions[originator][peer], topicToBloom(envelope.topic))) {
+        this.getNode('libp2p').broadcast(envelope, peer);
+      }
+    });
+  }
+
+  bridgeMailserverRequests(){
+    this.provider.events.emit("generateSymKeyFromPassword", config.mailserverPassword, (err, symKeyID) => {
+      this.getNode('libp2p').events.on("shh_bridge_mailserver_request", (envelope, peerId) => {
+       const key = Buffer.from(stripHexPrefix(this.keys[symKeyID].symmetricKey), "hex"); 
+       messages.decryptSymmetric(envelope.topic, key, envelope.data, (err, decrypted) => {
+         if(!decrypted) return;
+     
+         const message = rlp.decode(decrypted.payload);
+         const bloom = message[2];
+         const mailserverPeer = message[6].toString();
+
+         const params = {
+           from: message[0].readUInt32BE(0),
+           to: message[1].readUInt32BE(0),
+           bloom: message[2],
+           limit: Buffer.from([]),
+           mailserverPeer,
+           symKeyID
+         };
+
+         if(!this.mailserverSubscriptions[mailserverPeer]) this.mailserverSubscriptions[mailserverPeer] = {};
+         if(!this.mailserverSubscriptions[mailserverPeer][peerId]) this.mailserverSubscriptions[mailserverPeer][peerId] = Buffer.from([]);
+
+         this.mailserverSubscriptions[mailserverPeer][peerId] = bloomFilterAddition(this.mailserverSubscriptions[mailserverPeer][peerId], bloom);
+         
+         if(this.getNode('devp2p')){                    // TODO: minPow
+           this.provider.events.emit("requestMessages", 0.002, params, err => {
+             if(err) console.error("Error bridging mailserver request: " + err.message);
+           });
+         }
+       });
+      });
+    });
   }
 
 }

@@ -8,6 +8,7 @@ class Murmur {
     this.signalServers = options.signalServers || [];
     this.ignoreBloomFilters = options.ignoreBloomFilters !== undefined ? options.ignoreBloomFilters : false;
     this.bootnodes = options.bootnodes || [];
+    this.trustedPeers = options.trustedPeers || [];
     this.nodes = [];
     
     if(this.protocols.length != 2){
@@ -28,9 +29,14 @@ class Murmur {
   async start() {
     if(this.protocols.indexOf("devp2p") > -1){
       const DevP2PNode = require("./devp2p-node.js");
-      const devp2p = new DevP2PNode();
       const config = require("../data/config.json");
-      devp2p.setConfig(config);
+
+      const devp2p = new DevP2PNode({
+        bootnodes: this.bootnodes || config.devp2p.bootnodes || [],
+        trustedPeers: this.trustedPeers || config.devp2p.trustedPeers || [],
+        staticNodes: this.staticNodes || config.devp2p.staticNodes || []
+      });
+
       devp2p.start();
       devp2p.connectTo({address: '127.0.0.1', udpPort: 30303, tcpPort: 30303});
       this.nodes.push(devp2p);
