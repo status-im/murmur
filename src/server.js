@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const chalk = require('chalk');
 const program = require('commander');
+const Bourne = require('bourne');
 
 program
   .version('0.1.0')
@@ -81,7 +82,7 @@ if(ENABLE_WS){
 
   app.ws('/', function(ws, _req) {
     ws.on('message', function(msg) {
-      provider.sendAsync(JSON.parse(msg), (err, jsonResponse) => {
+      provider.sendAsync(Bourne.parse(msg), (err, jsonResponse) => {
         if (err) {
           console.dir(err);
           ws.send({error: err});
