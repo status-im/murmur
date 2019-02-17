@@ -112,7 +112,7 @@ class Manager {
         if(err) console.log(err);
       });
 
-      const dispatchEnvelope = (err, encryptedMessage) => {
+      const dispatchEnvelope = callback => (err, encryptedMessage) => {
         if(err){
           console.error(err);
           return cb("Error encrypting message");
@@ -168,15 +168,16 @@ class Manager {
             this.messagesTracker.push(envelope, 'libp2p');
           }
 
+          callback(null, stripHexPrefix(envelope.id));
           this.sendEnvelopeToSubscribers(envelope);
         }
       
       };
 
       if(options.symKey){
-        messages.encryptSymmetric(topic, envelope, options, dispatchEnvelope);
+        messages.encryptSymmetric(topic, envelope, options, dispatchEnvelope(cb));
       } else {
-        messages.encryptAsymmetric(envelope, pubKey, dispatchEnvelope);
+        messages.encryptAsymmetric(envelope, pubKey, dispatchEnvelope(cb));
       }
     });
 
