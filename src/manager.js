@@ -12,6 +12,7 @@ const BloomFilterManager = require('./bloom').default;
 const MessageTracker = require('./message-tracker');
 const Envelope = require("./envelope");
 const config = require('../data/config.json');
+const { fork } = require('child_process');
 
 class Manager {
 
@@ -118,60 +119,75 @@ class Manager {
           return cb("Error encrypting message");
         }
 
-        const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
+        const sendMessage = (powResult) => {
+          const msgEnv = [];
+          const expiryB = Buffer.alloc(4);
+                expiryB.writeUInt32BE(powResult.expiry);
+          const ttlB = Buffer.alloc(1);
+                ttlB.writeUInt8(ttl);
+          const nonceBuffer = Buffer.from(powResult.nonce, 'hex');
 
-        let nonceBuffer =  powResult.nonce;
-        let non0 = false;
-        let val = [];
-        for(let i = 0; i < nonceBuffer.length; i++){
-          if(nonceBuffer[i] !== 0){
-            non0 = true;
+          msgEnv.push(expiryB);
+          msgEnv.push(ttlB);
+          msgEnv.push(topic);
+          msgEnv.push(encryptedMessage);
+          msgEnv.push(nonceBuffer);
+  
+          const envelope = new Envelope(msgEnv);
+  
+          const devp2p = this.getNode('devp2p');
+          const libp2p = this.getNode('libp2p');
+  
+          if(targetPeer){
+            if(libp2pPeer && libp2p){
+              libp2p.broadcast(msgEnv, libp2pPeer, constants.SHH_P2PREQ);
+            } else if(devp2p) {
+              devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
+            }
+          } else {
+            if(devp2p) {
+             devp2p.broadcast(envelope);
+             this.messagesTracker.push(envelope, 'devp2p');
+            }
+            if(libp2p){
+              libp2p.broadcast(envelope);
+              this.messagesTracker.push(envelope, 'libp2p');
+            }
+  
+            callback(null, stripHexPrefix(envelope.id));
+            this.sendEnvelopeToSubscribers(envelope);
           }
-          if(non0){
-            val.push(nonceBuffer[i]);
-          }
-        }
-        nonceBuffer = Buffer.from(val);
+        };
 
-        const msgEnv = [];
-
-        const expiryB = Buffer.alloc(4);
-              expiryB.writeUInt32BE(powResult.expiry);
-        const ttlB = Buffer.alloc(1);
-              ttlB.writeUInt8(ttl);
-
-        msgEnv.push(expiryB);
-        msgEnv.push(ttlB);
-        msgEnv.push(topic);
-        msgEnv.push(encryptedMessage);
-        msgEnv.push(nonceBuffer);
-
-        const envelope = new Envelope(msgEnv);
-
-        const devp2p = this.getNode('devp2p');
-        const libp2p = this.getNode('libp2p');
-
-        if(targetPeer){
-          if(libp2pPeer && libp2p){
-            libp2p.broadcast(msgEnv, libp2pPeer, constants.SHH_P2PREQ);
-          } else if(devp2p) {
-            devp2p.broadcast(msgEnv, targetPeer.toString('hex'), constants.SHH_P2PREQ);
-          }
+        if(typeof window === "undefined"){
+          const process = fork('./src/pow-child.js');  
+          process.send({
+            powTarget, 
+            powTime, 
+            ttl, 
+            topic: topic.toString('hex'), 
+            encryptedMessage: encryptedMessage.toString('hex'), 
+            expiry,
+          });
+          process.on('message', sendMessage);
         } else {
-
-          if(devp2p) {
-           devp2p.broadcast(envelope);
-           this.messagesTracker.push(envelope, 'devp2p');
+          // TODO: code is duplicated here with process-spawn
+          // TODO: this is web. should use a process worker instead
+          const powResult = pow.ProofOfWork(powTarget, powTime, ttl, topic, encryptedMessage, expiry);
+          let nonceBuffer =  powResult.nonce;
+          let non0 = false;
+          let val = [];
+          for(let i = 0; i < nonceBuffer.length; i++){
+            if(nonceBuffer[i] !== 0){
+              non0 = true;
+            }
+            if(non0){
+              val.push(nonceBuffer[i]);
+            }
           }
-          if(libp2p){
-            libp2p.broadcast(envelope);
-            this.messagesTracker.push(envelope, 'libp2p');
-          }
-
-          callback(null, stripHexPrefix(envelope.id));
-          this.sendEnvelopeToSubscribers(envelope);
+          nonceBuffer = Buffer.from(val);
+          sendMessage({expiry: powResult.expiry, nonce: nonceBuffer.toString('hex')});
         }
-      
       };
 
       if(options.symKey){
