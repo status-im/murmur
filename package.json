@@ -107,9 +107,9 @@
     "libp2p-secio": "~0.10.0",
     "libp2p-spdy": "~0.12.1",
     "libp2p-tcp": "^0.13.0",
-    "libp2p-webrtc-star": "~0.15.3",
-    "libp2p-websocket-star": "~0.8.1",
-    "libp2p-websocket-star-multi": "^0.4.3",
+    "libp2p-webrtc-star": "^0.15.8",
+    "libp2p-websocket-star": "^0.10.2",
+    "libp2p-websocket-star-multi": "^0.4.4",
     "libp2p-websockets": "~0.12.0",
     "lru-cache": "^4.1.5",
     "ms": "^2.1.1",
@@ -120,7 +120,7 @@
     "secp256k1": "^3.5.2",
     "source-map-support": "^0.5.9",
     "strip-hex-prefix": "^1.0.0",
-    "wrtc": "^0.3.5"
+    "wrtc": "^0.4.0-beta1"
   },
   "author": "Status Research & Development GMBH",
   "authors": [

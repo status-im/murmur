@@ -139,7 +139,10 @@ class LibP2PNode {
   _startDiscovery() {
     this.node.on('peer:discovery', (peer) => {
       // console.log('Discovered:', peer.id.toB58String());
-      this.node.dial(peer, () => { });
+      if(peer.id.toB58String() !== "QmNo4aCrDJkwg7V1t28kp6EehNVYX3DkTa2UAdi9UaS4Vw") {
+        // Peer that keeps connecting
+        this.node.dial(peer, () => { });
+      }
     });
     
     this.node.on('peer:connect', (peer) => {
@@ -154,6 +157,7 @@ class LibP2PNode {
     this.node.on('peer:disconnect', (peer) => {
       delete this.peers[peer.id.toB58String()];
       console.error(chalk.red(`Peer disconnected - (${peer.id.toB58String()}`));
+      console.log(peer);
     });
   }
 
