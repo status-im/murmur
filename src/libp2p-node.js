@@ -139,7 +139,8 @@ class LibP2PNode {
   _startDiscovery() {
     this.node.on('peer:discovery', (peer) => {
       // console.log('Discovered:', peer.id.toB58String());
-      if(peer.id.toB58String() !== "QmNo4aCrDJkwg7V1t28kp6EehNVYX3DkTa2UAdi9UaS4Vw") {
+      if(peer.id.toB58String() !== "QmNo4aCrDJkwg7V1t28kp6EehNVYX3DkTa2UAdi9UaS4Vw" ||
+         peer.id.toB58String() !== "QmS5xrSDVmA7JLeuoahz39CnMGXvsdNnhoNpHvXFihVCSw") {
         // Peer that keeps connecting
         this.node.dial(peer, () => { });
       }
