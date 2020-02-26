@@ -1,6 +1,7 @@
 import rlp from "rlp-encoding";
 import Events from "events";
 import Envelope from "./envelope";
+import {SHH_BLOOM, SHH_MESSAGE, SHH_P2PMSG, SHH_STATUS} from "./constants";
 
 class SHH {
   constructor(version, peer, send) {

@@ -257,7 +257,7 @@ export const getHash = (plaintextBuffer, isSigned) => {
 
 export const ecRecoverPubKey = (messageHash, signature) => {
   const recovery = signature.slice(64).readIntBE(0, 1);
-  return secp256k1.recover(Buffer.from(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false);
+  return secp256k1.ecdsaRecover(Buffer.from(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false);
 };
 
 export const validateDataIntegrity = (k, expectedSize) => {
@@ -313,7 +313,7 @@ export const buildMessage = (messagePayload, padding, sig, options, cb) => {
 
     envelope[0] |= isSignedMask;
     const hash = keccak256("0x" + envelope.toString("hex"));
-    const s = secp256k1.sign(Buffer.from(hash.slice(2), "hex"), Buffer.from(options.from.privKey.slice(2), "hex"));
+    const s = secp256k1.ecdsaSign(Buffer.from(hash.slice(2), "hex"), Buffer.from(options.from.privKey.slice(2), "hex"));
     envelope = Buffer.concat([envelope, s.signature, Buffer.from([s.recovery])]);
   }
 

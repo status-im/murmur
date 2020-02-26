@@ -40,12 +40,12 @@ if (ENABLE_WS) {
 }
 
 (async () => {
-  const Provider = require("./provider");
+  const Provider = require("./provider").default;
   const provider = new Provider();
   const nodes = [];
 
   if (program.devp2p) {
-    const DevP2PNode = require("./devp2p-node.js");
+    const DevP2PNode = require("./devp2p-node.js").default;
     const devp2p = new DevP2PNode();
     devp2p.setConfig(config);
     devp2p.start();
@@ -62,11 +62,13 @@ if (ENABLE_WS) {
     nodes.push(libp2p);
   }
 
-  const Manager = require("./manager");
+  const Manager = require("./manager").default;
   const _manager = new Manager(provider, {
     isBridge: IS_BRIDGE,
     ignoreBloomFilters: IGNORE_BLOOM
   });
+
+
   _manager.setupNodes(nodes);
   _manager.start();
 
