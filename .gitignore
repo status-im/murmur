@@ -1,5 +1,10 @@
 node_modules/
 TODO
 dist
+lib
+module
+minified
+coverage
 yarn-debug.log*
 yarn-error.log*
+.vscode

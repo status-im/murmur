@@ -1,42 +1,41 @@
-const path = require('path');
-const nodeExternals = require('webpack-node-externals');
-
+const path = require("path");
+const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
 const webConfig = {
   entry: path.join(__dirname, "src/index.js"),
-  externals: {
-    'ethereumjs-devp2p': 'ethereumjs-devp2p',
-    'commander': 'commander',
-    'express': 'express',
-    'express-ws': 'express-ws'
-  },
-  target: 'web',
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    library: 'murmur',
-    libraryTarget: 'commonjs2',
-    filename: 'browser.js'
-  },
   module: {
     rules: [
       {
+        test: /\.js$/,
+        exclude: /(node_modules|devp2p-node.js)/,
+        use: [
+          {
+            loader: "babel-loader"
+          }
+        ]
+      },
+      {
         test: /devp2p-node.js/,
-        loader: 'null-loader'
+        loader: "null-loader"
       }
     ]
-  }
-};
-
-const nodeConfig = {
-  target: "node",
-  entry: path.join(__dirname, "src/index.js"),
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "node.js",
-    library: 'murmur',
-    libraryTarget: 'commonjs2',
   },
-  externals: [nodeExternals()]
+  externals: {
+    "ethereumjs-devp2p": "ethereumjs-devp2p",
+    commander: "commander",
+    express: "express",
+    "express-ws": "express-ws"
+  },
+  target: "web",
+  output: {
+    path: path.resolve(__dirname, "minified"),
+    library: "murmur",
+    libraryTarget: "umd",
+    filename: "murmur.js"
+  },
+  plugins: [
+    new BundleAnalyzerPlugin()
+  ]
 };
 
-module.exports = [webConfig, nodeConfig];
+module.exports = webConfig;

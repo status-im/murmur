@@ -1,7 +1,6 @@
-const Events = require('events');
+import Events from "events";
 
 class Provider {
-
   constructor() {
     this.powTarget = 12.5;
     this.maxMessageSize = 2000;
@@ -22,11 +21,11 @@ class Provider {
         if (err) {
           return callback(err);
         }
-        let response = {'id': payload.id, 'jsonrpc': '2.0', 'result': result};
+        let response = {id: payload.id, jsonrpc: "2.0", result: result};
         callback(null, response);
       });
     }
-    callback(new Error('unknown method ' + payload.method));
+    callback(new Error("unknown method " + payload.method));
   }
 
   shh_version(payload, cb) {
@@ -35,10 +34,10 @@ class Provider {
 
   shh_info(payload, cb) {
     let result = {
-      "minPow": this.powTarget,
-      "maxMessageSize": this.maxMessageSize,
-      "memory": 10000,
-      "messages": 20,
+      minPow: this.powTarget,
+      maxMessageSize: this.maxMessageSize,
+      memory: 10000,
+      messages: 20
     };
 
     cb(null, result);
@@ -57,7 +56,7 @@ class Provider {
   }
 
   shh_newKeyPair(payload, cb) {
-    this.events.emit('newKeyPair', cb);
+    this.events.emit("newKeyPair", cb);
   }
 
   shh_addPrivateKey(payload, cb) {
@@ -65,7 +64,7 @@ class Provider {
       return cb("private key is required");
     }
 
-    this.events.emit('addPrivateKey', payload.params[0], cb);
+    this.events.emit("addPrivateKey", payload.params[0], cb);
   }
 
   shh_deleteKeyPair(payload, cb) {
@@ -73,7 +72,7 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('deleteKeyPair', payload.params[0], cb);
+    this.events.emit("deleteKeyPair", payload.params[0], cb);
   }
 
   shh_hasKeyPair(payload, cb) {
@@ -81,7 +80,7 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('hasKeyPair', payload.params[0], cb);
+    this.events.emit("hasKeyPair", payload.params[0], cb);
   }
 
   shh_getPublicKey(payload, cb) {
@@ -89,7 +88,7 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('getPublicKey', payload.params[0], cb);
+    this.events.emit("getPublicKey", payload.params[0], cb);
   }
 
   shh_getPrivateKey(payload, cb) {
@@ -97,25 +96,25 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('getPrivateKey', payload.params[0], cb);
+    this.events.emit("getPrivateKey", payload.params[0], cb);
   }
 
   admin_addPeer(payload, cb) {
     if (!payload.params[0]) {
       return cb("enode URL is required");
     }
-    this.events.emit('addPeer', payload.params[0], cb);
+    this.events.emit("addPeer", payload.params[0], cb);
   }
 
   shhext_requestMessages(payload, cb) {
     if (!payload.params[0]) {
       return cb("message request object");
     }
-    this.events.emit('requestMessages', this.powTarget, payload.params[0], cb);
+    this.events.emit("requestMessages", this.powTarget, payload.params[0], cb);
   }
 
   shh_newSymKey(payload, cb) {
-    this.events.emit('newSymKey', cb);
+    this.events.emit("newSymKey", cb);
   }
 
   shh_addSymKey(payload, cb) {
@@ -123,7 +122,7 @@ class Provider {
       return cb("symmetric key is required");
     }
 
-    this.events.emit('addSymKey', payload.params[0], cb);
+    this.events.emit("addSymKey", payload.params[0], cb);
   }
 
   shh_generateSymKeyFromPassword(payload, cb) {
@@ -131,7 +130,7 @@ class Provider {
       return cb("password is required");
     }
 
-    this.events.emit('generateSymKeyFromPassword', payload.params[0], cb);
+    this.events.emit("generateSymKeyFromPassword", payload.params[0], cb);
   }
 
   shh_hasSymKey(payload, cb) {
@@ -139,7 +138,7 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('hasSymKey', payload.params[0], cb);
+    this.events.emit("hasSymKey", payload.params[0], cb);
   }
 
   shh_getSymKey(payload, cb) {
@@ -147,7 +146,7 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('getSymKey', payload.params[0], cb);
+    this.events.emit("getSymKey", payload.params[0], cb);
   }
 
   shh_deleteSymKey(payload, cb) {
@@ -155,14 +154,14 @@ class Provider {
       return cb("key id is required");
     }
 
-    this.events.emit('deleteSymKey', payload.params[0], cb);
+    this.events.emit("deleteSymKey", payload.params[0], cb);
   }
 
   shh_subscribe(payload, cb) {
     if (payload.params[0] !== "messages") {
-      return cb("unknonw payload type "+ payload.params[0]);
+      return cb("unknonw payload type " + payload.params[0]);
     }
-    this.events.emit('subscribe', payload.params[1], cb);
+    this.events.emit("subscribe", payload.params[1], cb);
   }
 
   shh_unsubscribe(_payload, _cb) {
@@ -175,8 +174,8 @@ class Provider {
     // cb(null, false);
   }
 
-  shh_markTrustedPeer(payload, cb){
-    this.events.emit('markTrustedPeer', payload.params[0]);
+  shh_markTrustedPeer(payload, cb) {
+    this.events.emit("markTrustedPeer", payload.params[0]);
     cb(null, true);
   }
 
@@ -191,21 +190,20 @@ class Provider {
   }
 
   shh_post(payload, cb) {
-    this.events.emit('post', payload.params[0], cb);
+    this.events.emit("post", payload.params[0], cb);
   }
 
   on(type, cb) {
     // TODO: support other types later, if relevant
-    if (type !== 'data') return;
+    if (type !== "data") return;
     this.notificationCallbacks.push(cb);
   }
 
   transmit(result) {
-    this.notificationCallbacks.forEach((callback) => {
+    this.notificationCallbacks.forEach(callback => {
       callback(result);
     });
   }
-
 }
 
-module.exports = Provider;
+export default Provider;

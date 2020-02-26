@@ -26,4 +26,4 @@ class MessageTracker {
   }
 }
 
-module.exports = MessageTracker;
+export default MessageTracker;

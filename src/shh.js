@@ -1,7 +1,6 @@
-const rlp = require('rlp-encoding');
-const Events = require('events');
-const {SHH_BLOOM, SHH_MESSAGE, SHH_P2PMSG, SHH_P2PREQ, SHH_STATUS} = require('./constants');
-const Envelope = require('./envelope');
+import rlp from "rlp-encoding";
+import Events from "events";
+import Envelope from "./envelope";
 
 class SHH {
   constructor(version, peer, send) {
@@ -11,19 +10,19 @@ class SHH {
     this.events = new Events();
   }
 
-  _handleMessage (code, data) {
+  _handleMessage(code, data) {
     const payload = rlp.decode(data);
 
-    if (code === SHH_STATUS) this.events.emit('status', payload);
+    if (code === SHH_STATUS) this.events.emit("status", payload);
 
     // Bloom filter
-    if (code === SHH_BLOOM) this.events.emit('bloom_exchange', payload);
+    if (code === SHH_BLOOM) this.events.emit("bloom_exchange", payload);
 
     if (code === SHH_MESSAGE || code === SHH_P2PMSG) {
-      payload.forEach((envelope) => {
+      payload.forEach(envelope => {
         // TODO: replace with envelope or decrypted fields, whatever abstraction makes more sense
-        const peer = "enode://" + this.peer._remoteId.toString('hex') + "@" + this.peer._socket._peername.address + ":" + this.peer._socket._peername.port;
-        this.events.emit('message', new Envelope(envelope), peer);
+        const peer = `enode://${this.peer._remoteId.toString("hex")}@${this.peer._socket._peername.address}:${this.peer._socket._peername.port}`;
+        this.events.emit("message", new Envelope(envelope), peer);
       });
     }
   }
@@ -31,13 +30,6 @@ class SHH {
   sendMessage(code, payload) {
     this.send(code, payload);
   }
-
 }
 
-module.exports = {
-  default: SHH,
-  SHH_BLOOM,
-  SHH_MESSAGE,
-  SHH_STATUS,
-  SHH_P2PREQ
-};
+export default SHH;

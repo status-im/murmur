@@ -1,45 +1,89 @@
-/* global module */
+module.exports = api => {
+  api.cache(true);
 
-module.exports = function (api) {
-  const node = {
-    ignore: [],
-    plugins: [
-      'babel-plugin-macros',
-      [
-        '@babel/plugin-proposal-decorators', {
-          legacy: true
-        }
-      ],
-      '@babel/plugin-syntax-dynamic-import',
-      'babel-plugin-dynamic-import-node',
-      [
-        '@babel/plugin-proposal-class-properties', {
-          loose: true
-        }
-      ],
-      '@babel/plugin-proposal-optional-chaining',
-      [
-        '@babel/plugin-transform-runtime', {
-          corejs: 2
-        }
-      ]
-    ],
-    presets: [
-      [
-        '@babel/preset-env', {
-          targets: {
-            node: '8.11.3'
-          }
-        }
-      ],
-      '@babel/preset-typescript'
-    ]
+  return {
+    env: {
+      development: {
+        presets: [
+          [
+            "@babel/preset-env",
+            {
+              corejs: 3,
+              shippedProposals: true,
+              targets: { node: "current" },
+              useBuiltIns: "usage"
+            }
+          ]
+        ],
+        plugins: [
+          [
+            "@babel/plugin-transform-runtime",
+            {
+              corejs: 3
+            }
+          ],
+          "@babel/plugin-proposal-class-properties",
+          "@babel/plugin-proposal-private-methods",
+          "@babel/plugin-proposal-nullish-coalescing-operator",
+          "@babel/plugin-proposal-optional-chaining"
+        ]
+      },
+      browser: {
+        presets: [
+          [
+            "@babel/preset-env",
+            {
+              corejs: 3,
+              modules: false,
+              shippedProposals: true,
+              targets: { browsers: "defaults" },
+              useBuiltIns: "usage"
+            }
+          ]
+        ],
+        plugins: [
+          [
+            "@babel/plugin-transform-runtime",
+            {
+              corejs: 3,
+              useESModules: true
+            }
+          ],
+          "@babel/plugin-proposal-class-properties",
+          "@babel/plugin-proposal-private-methods",
+          "@babel/plugin-proposal-nullish-coalescing-operator",
+          "@babel/plugin-proposal-optional-chaining"
+        ]
+      },
+      module: {
+        presets: [
+          [
+            "@babel/preset-env",
+            {
+              corejs: 3,
+              modules: false,
+              shippedProposals: true,
+              targets: { node: "current" },
+              useBuiltIns: "usage"
+            }
+          ]
+        ],
+        plugins: [
+          [
+            "@babel/plugin-transform-runtime",
+            {
+              corejs: 3,
+              useESModules: true
+            }
+          ],
+          "@babel/plugin-proposal-class-properties",
+          "@babel/plugin-proposal-private-methods",
+          "@babel/plugin-proposal-nullish-coalescing-operator",
+          "@babel/plugin-proposal-optional-chaining"
+        ]
+      }
+    },
+    sourceMaps: true
   };
-
-  switch (api.env()) {
-    case 'node':
-      return node;
-    default:
-      throw new Error(`invalid babel env: ${api.env}`);
-  }
 };
+

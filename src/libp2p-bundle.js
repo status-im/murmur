@@ -1,65 +1,56 @@
-const WebRTCStar = require('libp2p-webrtc-star');
-const WebSockets = require('libp2p-websockets');
-// const WebSocketStar = require('libp2p-websocket-star');
-const Bootstrap = require('libp2p-bootstrap');
-const Multiplex = require('libp2p-mplex');
-const SPDY = require('libp2p-spdy');
-const SECIO = require('libp2p-secio');
-const libp2p = require('libp2p');
-const WebSocketStarMulti = require('libp2p-websocket-star-multi');
+import WebRTCStar from "libp2p-webrtc-star";
+import WebSockets from "libp2p-websockets";
+// import WebSocketStar from 'libp2p-websocket-star');
+import Bootstrap from "libp2p-bootstrap";
+import Multiplex from "libp2p-mplex";
+import SPDY from "libp2p-spdy";
+import SECIO from "libp2p-secio";
+import libp2p from "libp2p";
+import WebSocketStarMulti from "libp2p-websocket-star-multi";
 
-const data = require('../data/config.json');
+import data from "../data/config.json";
 
-const BOOTNODES = data['libp2p'].bootnodes;
-const SIGNALSERVERS = data['libp2p'].signalServers;
+const BOOTNODES = data["libp2p"].bootnodes;
+const SIGNALSERVERS = data["libp2p"].signalServers;
 
 class LibP2PBundle extends libp2p {
-  constructor (peerInfo, options) {
+  constructor(peerInfo, options) {
     let startWRTC = !!options.startWRTC;
     let signalServers = options.signalServers && options.signalServers.length ? options.signalServers : [];
-    if(!signalServers.length) signalServers = SIGNALSERVERS && SIGNALSERVERS.length ? SIGNALSERVERS : [];
+    if (!signalServers.length) signalServers = SIGNALSERVERS && SIGNALSERVERS.length ? SIGNALSERVERS : [];
 
     let bootnodes = options.bootnodes && options.bootnodes.length ? options.bootnodes : [];
-    if(!bootnodes.length) bootnodes = BOOTNODES && BOOTNODES.length ? BOOTNODES : [];
+    if (!bootnodes.length) bootnodes = BOOTNODES && BOOTNODES.length ? BOOTNODES : [];
 
     let wrtcStar;
-    if(startWRTC){
-      const wrtc = require('wrtc');
-      wrtcStar = new WebRTCStar({ id: peerInfo.id, wrtc: wrtc });
+    if (startWRTC) {
+      const wrtc = require("wrtc");
+      wrtcStar = new WebRTCStar({id: peerInfo.id, wrtc: wrtc});
     } else {
       wrtcStar = new WebRTCStar({id: peerInfo.id});
     }
 
     signalServers.map(addr => {
-      const ma = addr + "/ipfs/" +  peerInfo.id.toB58String();
+      const ma = addr + "/ipfs/" + peerInfo.id.toB58String();
       peerInfo.multiaddrs.add(ma);
     });
-    
+
     // This works with a single WRTC server
     //const wsstar = new WebSocketStar({ id: peerInfo.id });
 
-
     // This works with multiple WRTC servers
-    const wsstar = new WebSocketStarMulti({ 
-      servers: signalServers, 
-      id: peerInfo.id, 
+    const wsstar = new WebSocketStarMulti({
+      servers: signalServers,
+      id: peerInfo.id,
       ignore_no_online: true
     });
 
     super({
       modules: {
-        transport: [
-          wrtcStar,
-          WebSockets,
-          wsstar
-        ],
+        transport: [wrtcStar, WebSockets, wsstar],
         streamMuxer: [Multiplex, SPDY],
         connEncryption: [SECIO],
-        peerDiscovery: [
-          wrtcStar.discovery,
-          wsstar.discovery,
-          Bootstrap
-        ],
+        peerDiscovery: [wrtcStar.discovery, wsstar.discovery, Bootstrap]
       },
       peerInfo,
       config: {
@@ -95,4 +86,4 @@ class LibP2PBundle extends libp2p {
   }
 }
 
-module.exports = LibP2PBundle;
+export default LibP2PBundle;

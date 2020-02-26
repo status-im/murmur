@@ -1,14 +1,19 @@
-// const elliptic = require("elliptic");
-const {keccak256} = require("eth-lib/lib/hash");
-// const {slice, length, toNumber} = require("eth-lib/lib/bytes");
-const constants = require('./constants');
-const { randomBytes, createHash, createECDH, createHmac, createCipheriv, createDecipheriv } = require('crypto-browserify');
-const stripHexPrefix = require('strip-hex-prefix');
-const secp256k1 = require('secp256k1');
+import {keccak256} from "eth-lib/lib/hash";
+import {isSignedMask, flagMask, symKeyLength, aesNonceLength, signatureLength} from "./constants";
+import {
+  randomBytes,
+  createHash,
+  createECDH,
+  createHmac,
+  createCipheriv,
+  createDecipheriv
+} from "crypto-browserify";
+import stripHexPrefix from "strip-hex-prefix";
+import secp256k1 from "secp256k1";
 
-const hexToBytes = (hex) => {
+export const hexToBytes = hex => {
   hex = hex.toString(16);
-  hex = hex.replace(/^0x/i,'');
+  hex = hex.replace(/^0x/i, "");
   let bytes = [];
   for (let c = 0; c < hex.length; c += 2) {
     bytes.push(parseInt(hex.substr(c, 2), 16));
@@ -38,9 +43,9 @@ const addPayloadSizeField = (msg, payload) => {
   return msg;
 };
 
-const getSizeOfPayloadSizeField = (payload) => {
+const getSizeOfPayloadSizeField = payload => {
   let s = 1;
-  for (let i = payload.length; i>= 256; i /= 256) {
+  for (let i = payload.length; i >= 256; i /= 256) {
     s++;
   }
   return s;
@@ -53,10 +58,10 @@ const kdf = (hashName, z, s1, kdLen, cb) => {
     return;
   }
 
-  let counter = Buffer.from([0,0,0,1]);
+  let counter = Buffer.from([0, 0, 0, 1]);
   let k = Buffer.from([]);
 
-  for(let i = 0; i <= reps; i++){
+  for (let i = 0; i <= reps; i++) {
     const hash = createHash(hashName);
     hash.update(Buffer.from(counter));
     hash.update(z);
@@ -74,7 +79,7 @@ const aes128enc = (m, key) => {
   var cipher = createCipheriv("aes-128-ctr", key, iv);
   var firstChunk = cipher.update(m);
   var secondChunk = cipher.final();
-  return (Buffer.concat([iv, firstChunk, secondChunk]));
+  return Buffer.concat([iv, firstChunk, secondChunk]);
 };
 
 const aes128dec = (ct, key) => {
@@ -86,7 +91,7 @@ const aes128dec = (ct, key) => {
   var firstChunk = cipher.update(ciphertext);
   var secondChunk = cipher.final();
 
-  return (Buffer.concat([firstChunk, secondChunk]));
+  return Buffer.concat([firstChunk, secondChunk]);
 };
 
 // From parity ECIES
@@ -97,13 +102,13 @@ function equalConstTime(b1, b2) {
   }
   var res = 0;
   for (var i = 0; i < b1.length; i++) {
-    res |= b1[i] ^ b2[i];  // jshint ignore:line
+    res |= b1[i] ^ b2[i]; // jshint ignore:line
   }
   return res === 0;
 }
 
-const decryptAsymmetric = (key, data, cb) => {
-  const privKey = createECDH('secp256k1');
+export const decryptAsymmetric = (key, data, cb) => {
+  const privKey = createECDH("secp256k1");
   privKey.setPrivateKey(key);
 
   const z = privKey.computeSecret(data.slice(0, 65));
@@ -114,16 +119,21 @@ const decryptAsymmetric = (key, data, cb) => {
   const keyLen = 16;
   const ke = k.slice(0, keyLen);
   let km = k.slice(keyLen);
-  km = createHash("sha256").update(km).digest();
+  km = createHash("sha256")
+    .update(km)
+    .digest();
 
   const hashSize = 32;
   const mEnd = data.length - hashSize;
   const ct = data.slice(65, mEnd);
 
   // Message Tag
-  const messageTag = createHmac('sha256', km).update(ct).update("").digest();
+  const messageTag = createHmac("sha256", km)
+    .update(ct)
+    .update("")
+    .digest();
 
-  if (!equalConstTime(messageTag, data.slice(mEnd))){
+  if (!equalConstTime(messageTag, data.slice(mEnd))) {
     return cb("Invalid Message");
   }
 
@@ -134,11 +144,11 @@ const decryptAsymmetric = (key, data, cb) => {
   cb(null, msgObj);
 };
 
-const encryptAsymmetric = (envelope, pubKey, cb) => {
-  const ephemeralKey = createECDH('secp256k1');
+export const encryptAsymmetric = (envelope, pubKey, cb) => {
+  const ephemeralKey = createECDH("secp256k1");
   ephemeralKey.generateKeys();
 
-  const z = ephemeralKey.computeSecret(Buffer.from(stripHexPrefix(pubKey), 'hex'));
+  const z = ephemeralKey.computeSecret(Buffer.from(stripHexPrefix(pubKey), "hex"));
 
   const k = kdf("sha256", z, Buffer.from([]), 32);
   if (k === null) return;
@@ -146,30 +156,35 @@ const encryptAsymmetric = (envelope, pubKey, cb) => {
   const keyLen = 16;
   const ke = k.slice(0, keyLen);
   let km = k.slice(keyLen);
-  km = createHash("sha256").update(km).digest();
+  km = createHash("sha256")
+    .update(km)
+    .digest();
 
   const em = aes128enc(envelope, ke);
 
-  const messageTag = createHmac('sha256', km).update(em).update("").digest();
+  const messageTag = createHmac("sha256", km)
+    .update(em)
+    .update("")
+    .digest();
 
   const msgObj = Buffer.concat([ephemeralKey.getPublicKey(), em, messageTag]);
 
   cb(null, msgObj);
 };
 
-const encryptSymmetric = (topic, envelope, options, cb) => {
-  const symKey = Buffer.from(stripHexPrefix(options.symKey.symmetricKey), 'hex');
+export const encryptSymmetric = (topic, envelope, options, cb) => {
+  const symKey = Buffer.from(stripHexPrefix(options.symKey.symmetricKey), "hex");
 
-  if(!validateDataIntegrity(symKey, constants.symKeyLength)){
+  if (!validateDataIntegrity(symKey, symKeyLength)) {
     const errMsg = "invalid key provided for symmetric encryption, size: " + symKey.length;
-    if(cb) return cb(errMsg);
+    if (cb) return cb(errMsg);
     throw errMsg;
   }
 
-  const salt = randomBytes(constants.aesNonceLength);
+  const salt = randomBytes(aesNonceLength);
 
-  const cipher = createCipheriv('aes-256-gcm', symKey, salt);
-  const ciphertext = Buffer.concat([cipher.update(envelope, 'hex'), cipher.final()]);
+  const cipher = createCipheriv("aes-256-gcm", symKey, salt);
+  const ciphertext = Buffer.concat([cipher.update(envelope, "hex"), cipher.final()]);
   const tag = cipher.getAuthTag();
 
   envelope = Buffer.concat([ciphertext, tag, salt]);
@@ -177,34 +192,34 @@ const encryptSymmetric = (topic, envelope, options, cb) => {
   cb(null, envelope);
 };
 
-const decryptSymmetric = (topic, key, data, cb) => {
-  if (data.length < constants.aesNonceLength) {
+export const decryptSymmetric = (topic, key, data, cb) => {
+  if (data.length < aesNonceLength) {
     const errorMsg = "missing salt or invalid payload in symmetric message";
     if (cb) return cb(errorMsg);
     throw errorMsg;
   }
 
-  const salt = data.slice(data.length - constants.aesNonceLength);
+  const salt = data.slice(data.length - aesNonceLength);
   const msg = data.slice(0, data.length - 12);
 
-  const decipher = createDecipheriv('aes-256-gcm', key, salt);
-        decipher.setAuthTag(msg.slice(msg.length - 16));
+  const decipher = createDecipheriv("aes-256-gcm", key, salt);
+  decipher.setAuthTag(msg.slice(msg.length - 16));
 
-  const message =  Buffer.concat([decipher.update(msg.slice(0, msg.length - 16), 'hex'), decipher.final()]);
+  const message = Buffer.concat([decipher.update(msg.slice(0, msg.length - 16), "hex"), decipher.final()]);
 
   const msgObj = parseMessage(message);
 
   cb(null, msgObj);
 };
 
-const parseMessage = (message) => {
+export const parseMessage = message => {
   let start = 1;
   // const end = message.length;
 
   let payload;
   let pubKey;
 
-  const auxiliaryFieldSize = message.readUIntLE(0, 1) & constants.flagMask;
+  const auxiliaryFieldSize = message.readUIntLE(0, 1) & flagMask;
 
   let auxiliaryField;
   if (auxiliaryFieldSize !== 0) {
@@ -213,7 +228,7 @@ const parseMessage = (message) => {
     payload = message.slice(start, start + auxiliaryField);
   }
 
-  const isSigned = (message.readUIntLE(0, 1) & constants.isSignedMask) == constants.isSignedMask;
+  const isSigned = (message.readUIntLE(0, 1) & isSignedMask) == isSignedMask;
   let signature = null;
   if (isSigned) {
     signature = getSignature(message);
@@ -227,35 +242,37 @@ const parseMessage = (message) => {
   return assignDefined({}, {payload, pubKey, signature, padding});
 };
 
-const getSignature = (plaintextBuffer) => {
-  return plaintextBuffer.slice(plaintextBuffer.length - constants.signatureLength, plaintextBuffer.length);
+export const getSignature = plaintextBuffer => {
+  return plaintextBuffer.slice(plaintextBuffer.length - signatureLength, plaintextBuffer.length);
 };
 
-const getHash = (plaintextBuffer, isSigned) => {
-  if (isSigned){
-    return keccak256(hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - constants.signatureLength).toString('hex')));
+export const getHash = (plaintextBuffer, isSigned) => {
+  if (isSigned) {
+    return keccak256(
+      hexToBytes(plaintextBuffer.slice(0, plaintextBuffer.length - signatureLength).toString("hex"))
+    );
   }
-  return keccak256(hexToBytes(plaintextBuffer.toString('hex')));
+  return keccak256(hexToBytes(plaintextBuffer.toString("hex")));
 };
 
-const ecRecoverPubKey = (messageHash, signature) => {
+export const ecRecoverPubKey = (messageHash, signature) => {
   const recovery = signature.slice(64).readIntBE(0, 1);
   return secp256k1.recover(Buffer.from(messageHash.slice(2), "hex"), signature.slice(0, 64), recovery, false);
 };
 
-const validateDataIntegrity = (k, expectedSize) => {
+export const validateDataIntegrity = (k, expectedSize) => {
   if (k.length !== expectedSize) {
     return false;
   }
 
-  if (expectedSize > 3 && k.equals(Buffer.alloc(k.length))){
+  if (expectedSize > 3 && k.equals(Buffer.alloc(k.length))) {
     return false;
   }
 
   return true;
 };
 
-const buildMessage = (messagePayload, padding, sig, options, cb) => {
+export const buildMessage = (messagePayload, padding, sig, options, cb) => {
   // TODO: extract to constants
   const flagsLength = 1;
   // const payloadSizeFieldMaxSize = 4;
@@ -266,14 +283,14 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
   envelope = addPayloadSizeField(envelope, messagePayload);
   envelope = Buffer.concat([envelope, messagePayload]);
 
-  if (!!padding){
+  if (!!padding) {
     envelope = Buffer.concat([envelope, padding]);
   } else {
     // Calculate padding:
     let rawSize = flagsLength + getSizeOfPayloadSizeField(messagePayload) + messagePayload.length;
 
-    if (options.from){
-      rawSize += constants.signatureLength;
+    if (options.from) {
+      rawSize += signatureLength;
     }
 
     const odd = rawSize % padSizeLimit;
@@ -287,28 +304,18 @@ const buildMessage = (messagePayload, padding, sig, options, cb) => {
     envelope = Buffer.concat([envelope, pad]);
   }
 
-  if (sig !== null){
+  if (sig !== null) {
     // Sign the message
-    if (envelope.readUIntLE(0, 1) & constants.isSignedMask){ // Is Signed
+    if (envelope.readUIntLE(0, 1) & isSignedMask) {
+      // Is Signed
       cb("failed to sign the message: already signed");
     }
 
-    envelope[0] |= constants.isSignedMask;
-    const hash = keccak256("0x" + envelope.toString('hex'));
-    const s = secp256k1.sign(Buffer.from(hash.slice(2), 'hex'), Buffer.from(options.from.privKey.slice(2), 'hex'));
+    envelope[0] |= isSignedMask;
+    const hash = keccak256("0x" + envelope.toString("hex"));
+    const s = secp256k1.sign(Buffer.from(hash.slice(2), "hex"), Buffer.from(options.from.privKey.slice(2), "hex"));
     envelope = Buffer.concat([envelope, s.signature, Buffer.from([s.recovery])]);
   }
 
   return envelope;
-};
-
-module.exports = {
-  decryptSymmetric,
-  decryptAsymmetric,
-  encryptSymmetric,
-  encryptAsymmetric,
-  hexToBytes,
-  buildMessage,
-  parseMessage,
-  validateDataIntegrity
 };
